@@ -6,7 +6,7 @@ Playable Fallout: New Vegas Caravan card game for the Wand Company Pip-Boy 3000,
 
 ## v1.0.0 release
 
-- First stable public release of Caravan for the Wand Company Pip-Boy 3000 / 3000a.
+- First stable public release of Caravan for the Wand Company Pip-Boy 3000.
 - Player-vs-CPU Caravan with randomized 54-card decks, betting, face cards, Jokers, win/loss detection, rematches, and a guided Demo / Tutorial.
 - Low-memory modular runtime designed around the Pip-Boy 3000 firmware 1.1.6 limits.
 - Configurable Playing Card, Discard, Bottle Cap, and Lazy Days Tired audio with persistent Volume 0-15 settings.
