@@ -1,0 +1,146 @@
+{
+  "id": "caravan",
+  "name": "Caravan",
+  "author": "@LlamaYeYe",
+  "version": "1.0.0",
+  "description": "Playable Fallout: New Vegas Caravan card game for the Wand Company Pip-Boy 3000, featuring player-vs-CPU matches, a guided tutorial, configurable audio, and animated cap results.",
+  "icon": "assets/icon.png",
+  "previews": [],
+  "type": "game",
+  "readme": "README.md",
+  "storage": [
+    {
+      "name": "HOLO/CARAVAN/APP.JS",
+      "url": "app.min.js"
+    },
+    {
+      "name": "HOLO/CARAVAN/CARAVAN_MENU.MIN.JS",
+      "url": "assets/CARAVAN_MENU.MIN.JS"
+    },
+    {
+      "name": "HOLO/CARAVAN/CARAVAN_MUSIC_APPLY.JS",
+      "url": "assets/CARAVAN_MUSIC_APPLY.MIN.JS"
+    },
+    {
+      "name": "HOLO/CARAVAN/CARAVAN_MUSIC_LEVELS.BIN",
+      "url": "assets/CARAVAN_MUSIC_LEVELS.BIN"
+    },
+    {
+      "name": "HOLO/CARAVAN/MUSIC.APPLIED",
+      "url": "assets/MUSIC.APPLIED"
+    },
+    {
+      "name": "HOLO/CARAVAN/CARAVAN_SFX_APPLY.JS",
+      "url": "assets/CARAVAN_SFX_APPLY.MIN.JS"
+    },
+    {
+      "name": "HOLO/CARAVAN/CARAVAN_SFX_LEVELS.BIN",
+      "url": "assets/CARAVAN_SFX_LEVELS.BIN"
+    },
+    {
+      "name": "HOLO/CARAVAN/SFX.APPLIED",
+      "url": "assets/SFX.APPLIED"
+    },
+    {
+      "name": "HOLO/CARAVAN/CARAVAN_GAME.JS",
+      "url": "assets/CARAVAN_GAME.MIN.JS"
+    },
+    {
+      "name": "HOLO/CARAVAN/CARAVAN_RENDERER.JS",
+      "url": "assets/CARAVAN_RENDERER.MIN.JS"
+    },
+    {
+      "name": "HOLO/CARAVAN/CARAVAN_RESULTS.JS",
+      "url": "assets/CARAVAN_RESULTS.MIN.JS"
+    },
+    {
+      "name": "HOLO/CARAVAN/CARAVAN_SOUND.JS",
+      "url": "assets/CARAVAN_SOUND.MIN.JS"
+    },
+    {
+      "name": "HOLO/CARAVAN/CARAVAN_PREVIEW.JS",
+      "url": "assets/CARAVAN_PREVIEW.MIN.JS"
+    },
+    {
+      "name": "HOLO/CARAVAN/SOUND.CFG",
+      "url": "assets/SOUND.CFG"
+    },
+    {
+      "name": "HOLO/CARAVAN/CARD_DISCARD_OVERLAP.WAV",
+      "url": "assets/CARD_DISCARD_OVERLAP.WAV"
+    },
+    {
+      "name": "HOLO/CARAVAN/CARD_DISCARD_PREVIEW.WAV",
+      "url": "assets/CARD_DISCARD_PREVIEW.WAV"
+    },
+    {
+      "name": "HOLO/CARAVAN/CARD_PLAY_OVERLAP.WAV",
+      "url": "assets/CARD_PLAY_OVERLAP.WAV"
+    },
+    {
+      "name": "HOLO/CARAVAN/CARD_PLAY_PREVIEW.WAV",
+      "url": "assets/CARD_PLAY_PREVIEW.WAV"
+    },
+    {
+      "name": "HOLO/CARAVAN/GAME_AUDIO_WARM_16K.WAV",
+      "url": "assets/GAME_AUDIO_WARM_16K.WAV"
+    },
+    {
+      "name": "HOLO/CARAVAN/LAZY_DAYS_TIRED.WAV",
+      "url": "assets/LAZY_DAYS_TIRED.WAV"
+    },
+    {
+      "name": "HOLO/CARAVAN/LAZY_DAYS_PREVIEW.WAV",
+      "url": "assets/LAZY_DAYS_PREVIEW.WAV"
+    },
+    {
+      "name": "HOLO/CARAVAN/CAP_COUNT.WAV",
+      "url": "assets/CAP_COUNT.WAV"
+    },
+    {
+      "name": "HOLO/CARAVAN/CAP_COUNT_START.WAV",
+      "url": "assets/CAP_COUNT_START.WAV"
+    },
+    {
+      "name": "HOLO/CARAVAN/CAP_COUNT_LOOP.WAV",
+      "url": "assets/CAP_COUNT_LOOP.WAV"
+    },
+    {
+      "name": "HOLO/CARAVAN/CAP_COUNT_END.WAV",
+      "url": "assets/CAP_COUNT_END.WAV"
+    },
+    {
+      "name": "HOLO/CARAVAN/CAP.IMG",
+      "url": "assets/CAP.IMG"
+    },
+    {
+      "name": "HOLO/CARAVAN/CAP_HAPPY.IMG",
+      "url": "assets/CAP_HAPPY.IMG"
+    },
+    {
+      "name": "HOLO/CARAVAN/CAP_SAD.IMG",
+      "url": "assets/CAP_SAD.IMG"
+    },
+    {
+      "name": "HOLO/CARAVAN/CARAVAN_DEMO.JS",
+      "url": "assets/CARAVAN_DEMO.MIN.JS"
+    },
+    {
+      "name": "HOLO/CARAVAN/SUIT_S.IMG",
+      "url": "assets/SUIT_S.IMG"
+    },
+    {
+      "name": "HOLO/CARAVAN/SUIT_H.IMG",
+      "url": "assets/SUIT_H.IMG"
+    },
+    {
+      "name": "HOLO/CARAVAN/SUIT_D.IMG",
+      "url": "assets/SUIT_D.IMG"
+    },
+    {
+      "name": "HOLO/CARAVAN/SUIT_C.IMG",
+      "url": "assets/SUIT_C.IMG"
+    }
+  ],
+  "storageOptional": []
+}

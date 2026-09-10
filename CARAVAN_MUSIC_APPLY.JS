@@ -1,0 +1,110 @@
+(function(api){
+var fs=api.fs,b=api.basePath,
+wav="LAZY_DAYS_TIRED.WAV",
+levels="CARAVAN_MUSIC_LEVELS.BIN",
+applied="MUSIC.APPLIED",
+stride=1209,
+dataOffset=94,
+blocks=403,
+blockAlign=2048,
+onsetBase=stride*16,
+onsetBlock=2;
+
+function wanted(){
+    var cfg,v;
+    try{cfg=fs.readFileSync(b+"SOUND.CFG")}catch(error){cfg=""}
+    if(!cfg||cfg.length<6)return 15;
+    v=parseInt(cfg.charAt(5),16);
+    if(isNaN(v)||v<0||v>15)v=15;
+    return v
+}
+
+function current(){
+    var s,v;
+    try{s=fs.readFileSync(b+applied)}catch(error){s=""}
+    if(!s||!s.length)return 15;
+    v=parseInt(s.charAt(0),16);
+    if(isNaN(v)||v<1||v>15)return 15;
+    return v
+}
+
+function saveCurrent(level){
+    try{fs.writeFileSync(b+applied,"0123456789ABCDEF".charAt(level))}
+    catch(error){}
+}
+
+function apply(){
+    var level=wanted(),old=current(),
+        f=0,m=0,heads=0,onset=0,
+        oldUnsync=0,fast=0,
+        i,pos,part;
+
+    if(level<=0||level===old)return 1;
+
+    try{
+        m=E.openFile(b+levels,"r");
+        if(!m)throw new Error("MUSIC LEVEL OPEN");
+        m.seek(level*stride);
+        heads=m.read(stride);
+        if(!heads||heads.length!==stride)
+            throw new Error("MUSIC LEVEL READ");
+
+        m.seek(onsetBase+level*blockAlign);
+        onset=m.read(blockAlign);
+        m.close();m=0;
+        if(!onset||onset.length!==blockAlign)
+            throw new Error("MUSIC ONSET READ");
+
+        f=E.openFile(b+wav,"r+");
+        if(!f)throw new Error("MUSIC WAV OPEN");
+
+        try{
+            oldUnsync=E.getFlags().unsyncFiles?1:0;
+            E.setFlags({unsyncFiles:1});
+            fast=1
+        }catch(flagError){}
+
+        for(i=0;i<blocks;i++){
+            pos=dataOffset+i*blockAlign;
+            part=heads.substr(i*3,3);
+            f.seek(pos);
+            if(f.write(part)!==3)
+                throw new Error("MUSIC HEADER WRITE")
+        }
+
+        part=0;heads=0;
+
+        /*
+         * The first audible music starts inside ADPCM block 2. Its normal
+         * predictor/index header is still digital silence, so header-only
+         * scaling cannot lower the notes later in that same block. Replace
+         * that one complete block with a true per-volume encode. Native
+         * repeat then reuses the already-correct onset on every loop.
+         */
+        f.seek(dataOffset+onsetBlock*blockAlign);
+        if(f.write(onset)!==blockAlign)
+            throw new Error("MUSIC ONSET WRITE");
+        onset=0;
+
+        f.close();f=0;
+
+        if(fast){
+            E.setFlags({unsyncFiles:oldUnsync});
+            fast=0
+        }
+
+        saveCurrent(level);
+        return 1
+    }catch(error){
+        try{if(f)f.close()}catch(e){}
+        try{if(m)m.close()}catch(e){}
+        f=0;m=0;heads=0;onset=0;part=0;
+        if(fast){
+            try{E.setFlags({unsyncFiles:oldUnsync})}catch(e){}
+        }
+        return 0
+    }
+}
+
+return{apply:apply}
+});

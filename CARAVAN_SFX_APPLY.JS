@@ -1,0 +1,148 @@
+(function(api){
+var fs=api.fs,b=api.basePath,
+levels="CARAVAN_SFX_LEVELS.BIN",
+applied="SFX.APPLIED",
+playFile="CARD_PLAY_OVERLAP.WAV",
+discardFile="CARD_DISCARD_OVERLAP.WAV",
+coinStartFile="CAP_COUNT_START.WAV",
+coinLoopFile="CAP_COUNT_LOOP.WAV",
+coinEndFile="CAP_COUNT_END.WAV",
+playStride=48,
+discardStride=60,
+playOffset=94,
+discardOffset=94,
+playBlocks=16,
+discardBlocks=12,
+coinStartBlocks=17,
+coinLoopBlocks=7,
+coinEndBlocks=57,
+blockAlign=256,
+discardTableBase=768,
+coinStartTableBase=1728,
+coinLoopTableBase=2688,
+coinEndTableBase=3120,
+coinStartStride=60,
+coinLoopStride=27,
+coinEndStride=177;
+
+function cfg(){
+    var s;
+    try{s=fs.readFileSync(b+"SOUND.CFG")}catch(error){s=""}
+    if(!s||s.length<6)s="1F1F1F";
+    return s
+}
+
+function state(){
+    var s;
+    try{s=fs.readFileSync(b+applied)}catch(error){s=""}
+    if(!s||s.length<3)s="FFF";
+    return s
+}
+
+function patch(fileName,dataOffset,blocks,tableOffset,stride,level){
+    var f=0,m=0,heads=0,
+        oldUnsync=0,fast=0,
+        i,part;
+
+    try{
+        m=E.openFile(b+levels,"r");
+        if(!m)throw new Error("SFX LEVEL OPEN");
+        m.seek(tableOffset+level*stride);
+        heads=m.read(stride);
+        m.close();m=0;
+
+        if(!heads||heads.length!==stride)
+            throw new Error("SFX LEVEL READ");
+
+        f=E.openFile(b+fileName,"r+");
+        if(!f)throw new Error("SFX WAV OPEN");
+
+        try{
+            oldUnsync=E.getFlags().unsyncFiles?1:0;
+            E.setFlags({unsyncFiles:1});
+            fast=1
+        }catch(flagError){}
+
+        for(i=0;i<blocks;i++){
+            part=heads.substr(i*3,3);
+            f.seek(dataOffset+i*blockAlign);
+            if(f.write(part)!==3)
+                throw new Error("SFX HEADER WRITE")
+        }
+
+        part=0;heads=0;
+        f.close();f=0;
+
+        if(fast){
+            E.setFlags({unsyncFiles:oldUnsync});
+            fast=0
+        }
+
+        return 1
+    }catch(error){
+        try{if(f)f.close()}catch(e){}
+        try{if(m)m.close()}catch(e){}
+        if(fast){
+            try{E.setFlags({unsyncFiles:oldUnsync})}catch(e){}
+        }
+        return 0
+    }
+}
+
+function apply(){
+    var conf=cfg(),s=state(),
+        p=parseInt(conf.charAt(1),16),
+        d=parseInt(conf.charAt(3),16),
+        sp=parseInt(s.charAt(0),16),
+        sd=parseInt(s.charAt(1),16),
+        c=parseInt(conf.charAt(7),16),
+        sc=parseInt(s.charAt(2),16),
+        out0=s.charAt(0),out1=s.charAt(1),out2=s.charAt(2),
+        changed=0;
+
+    if(isNaN(p)||p<0||p>15)p=15;
+    if(isNaN(d)||d<0||d>15)d=15;
+    if(isNaN(sp)||sp<1||sp>15)sp=15;
+    if(isNaN(sd)||sd<1||sd>15)sd=15;
+    if(isNaN(c)||c<0||c>15)c=15;
+    if(isNaN(sc)||sc<1||sc>15)sc=15;
+
+    /*
+     * OFF/Volume 0 does not need a file rewrite because the game won't play it.
+     */
+    if(conf.charAt(0)==="1"&&p>0&&p!==sp){
+        if(patch(playFile,playOffset,playBlocks,0,playStride,p)){
+            out0="0123456789ABCDEF".charAt(p);
+            changed=1
+        }
+    }
+
+    if(conf.charAt(2)==="1"&&d>0&&d!==sd){
+        if(patch(discardFile,discardOffset,discardBlocks,
+                 discardTableBase,discardStride,d)){
+            out1="0123456789ABCDEF".charAt(d);
+            changed=1
+        }
+    }
+
+    if(conf.length>=8&&conf.charAt(6)==="1"&&c>0&&c!==sc){
+        if(patch(coinStartFile,playOffset,coinStartBlocks,
+                 coinStartTableBase,coinStartStride,c)&&
+           patch(coinLoopFile,playOffset,coinLoopBlocks,
+                 coinLoopTableBase,coinLoopStride,c)&&
+           patch(coinEndFile,playOffset,coinEndBlocks,
+                 coinEndTableBase,coinEndStride,c)){
+            out2="0123456789ABCDEF".charAt(c);
+            changed=1
+        }
+    }
+
+    if(changed){
+        try{fs.writeFileSync(b+applied,out0+out1+out2)}catch(error){}
+    }
+
+    return 1
+}
+
+return{apply:apply}
+});

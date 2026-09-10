@@ -1,0 +1,655 @@
+1.0.0 (2026-09-10)
+- First stable public release of Caravan for the Wand Company Pip-Boy 3000 / 3000a.
+- Promoted the working v0.8.26 gameplay/audio baseline to release version 1.0.0 without changing game behavior.
+- Updated public metadata, README, build notes, and APPINFO release identity to 1.0.0.
+- Removed the unused CARAVAN_MUSIC_ONSET_LEVELS_TEST.BIN test artifact from the public package.
+- Public-facing documentation now reflects the current inline CPU implementation instead of the retired CARAVAN_CPU module.
+- Current release is no longer labeled as a prototype; historical development entries remain unchanged below.
+
+0.8.26 (2026-09-10)
+- Renamed the Volume Adjustment menu item from `Bottle Cap Sound` to `Bottle Cap` and its detail title to `BOTTLE CAP`.
+- Fixed the brief loud burst at the beginning of Lazy Days Tired and at each native repeat boundary.
+- The first audible notes occur inside ADPCM block 2 after silence, so the previous sparse header-only volume patch could not scale those later samples inside the block.
+- Appended true per-volume encoded copies of only that one 2048-byte onset block to CARAVAN_MUSIC_LEVELS.BIN and patch it before opening the native repeating stream.
+- Preserved the existing sparse low-memory music header patch for all 403 blocks; only one additional 2048-byte onset block is read/applied for the selected level.
+- Preserved v0.8.25 Bottle Cap WAV sequence/volume matching, continuous queue, Discard SFX, smooth cap animation, Happy/Sad art, gameplay, CPU behavior, and unrelated audio.
+
+0.8.25 (2026-09-10)
+- Replaced the MP3-derived Bottle Cap result assets with the newly supplied native 16 kHz mono WAV sources.
+- Rebuilt Bottle Cap 1, Bottle Cap 2, and Bottle Cap 4 to the Nuka-Cola Preview effective Volume-15 loudness target; decoded masters remain approximately -28.2 dB RMS.
+- Preserved the same Bottle Cap Sound Volume 0-15 scaling formula for the Nuka-Cola Preview and all three in-game stages.
+- Removed only dead-air padding at the 1 -> 2, 2 -> 2, and 2 -> 4 boundaries so the continuous queue does not contain audible silence gaps; actual effect content is preserved.
+- Bottle Cap 1 -> Bottle Cap 2 repeats -> Bottle Cap 4 still uses one continuous queued 16 kHz ADPCM stream with Bottle Cap 2 pre-queued before drain and Bottle Cap 4 appended into the same queue.
+- Preserved Discard SFX, V0.8.17 smooth cap-number animation, Happy/Sad artwork, gameplay, CPU behavior, and all unrelated sound/menu systems.
+
+0.8.24 (2026-09-10)
+- Renamed Volume Adjustment `Coin Sound` to `Bottle Cap Sound`.
+- Fixed the replacement Bottle Cap source conversion: the supplied MP3s carry the effect in the left channel with the right channel effectively silent, so V0.8.23's stereo-to-mono average reduced them by about 6 dB before volume scaling.
+- Rebuilt Bottle Cap 1, Bottle Cap 2, and Bottle Cap 4 from the active channel and matched their effective Volume-15 loudness to the Nuka-Cola preview before rebuilding the shared 0-15 ADPCM level tables.
+- The Nuka-Cola sound remains Preview-only; Bottle Cap Sound Volume 0-15 now uses the same scaling curve for Preview and all three in-game result stages.
+- Replaced repeated native `Pip.audioStart(path)` restarts with one continuous 16 kHz `Pip.audioStartVar(..., overlap:false)` queue: Bottle Cap 1 -> Bottle Cap 2 repeats -> Bottle Cap 4.
+- Bottle Cap 2 is appended before the audio ring drains, and Bottle Cap 4 is streamed into the same queue in small chunks, removing the fixed restart gaps that could sound like stutters.
+- Preserved the accepted V0.8.18 Discard SFX fix, V0.8.17 cap-number animation, happy/sad result art, game rules, CPU behavior, and unrelated audio/menu behavior.
+
+0.8.23 (2026-09-10)
+- Replaced the previous single Coin Sound result effect with a three-stage Bottle Cap sequence using the newly supplied audio.
+- Bottle Cap 1 (`CAP_COUNT_START.WAV`) plays once when the displayed cap counter first begins moving.
+- Bottle Cap 2 (`CAP_COUNT_LOOP.WAV`) follows and repeats at its full encoded boundary (~285 ms on the Pip-Boy ADPCM path) while the displayed cap count is still changing.
+- The supplied `bottle cap 4.mp3` is used as the requested finishing stage (`CAP_COUNT_END.WAV`): the active Bottle Cap 2 repeat is allowed to complete, then this finish plays once.
+- Volume Adjustment Coin Sound Preview now uses the supplied Nuka-Cola sound (`CAP_COUNT.WAV`) rather than the three result-stage files.
+- The same Coin Sound ON/OFF and Volume 0-15 setting controls Bottle Cap 1, Bottle Cap 2, Bottle Cap 4/Finish, and the Nuka-Cola Preview.
+- Rebuilt only the Coin/Bottle Cap sparse ADPCM level tables for all three in-game result files; Playing Card and Discard tables are preserved byte-for-byte.
+- Replaced the old Coin/Pixabay credit with: Sound Distributed From Wand Company PIP-BOY 3000.
+- Preserved the accepted V0.8.18 Discard SFX fix, V0.8.17 smooth cap counter, happy/sad artwork, game rules, CPU behavior, and all unrelated audio/menu behavior.
+
+0.8.22 (2026-09-10)
+- Kept the accepted V0.8.21 quarter Coin loop, smooth loop-to-tail transition, Volume 0-15 controls, full Preview, credit text, V0.8.18 Discard SFX fix, V0.8.17 cap counter, and all gameplay behavior.
+- Increased only the Coin Sound master another +5 dB over V0.8.21, for approximately +7 dB total relative to the original supplied Coin source.
+- Rebuilt only the Coin loop/end sparse ADPCM level tables so in-game Coin Volume 1-15 scales correctly from the new louder maximum; Playing Card and Discard level tables are preserved.
+- Full Coin Preview uses the same louder source and continues to follow its selected Volume 0-15 setting.
+
+0.8.21 (2026-09-10)
+- Preserved the accepted V0.8.20 Coin Sound controls/credit, V0.8.18 Discard SFX fix, V0.8.17 smooth cap counter, happy/sad result art, game rules, CPU, and other audio behavior.
+- Raised the Coin Sound source by a modest +2 dB so Volume 15 is a little stronger without being aggressively loud; the source still has substantial headroom and is not peak-clipped.
+- Shortened the in-game repeating Coin segment from about one-half of the supplied effect to about one-quarter (~0.347 s encoded playback).
+- Chose the quarter split near a naturally quiet point in the source instead of a harsh arbitrary cut.
+- Added a very short fade-in/fade-out around the repeat boundary and a matching short fade-in on the finishing tail to smooth repeat transitions and the exit into the natural ending.
+- When cap counting finishes, no new short loop is started; the current short loop reaches its boundary and the remaining ~three-quarter tail plays once to completion.
+- Coin Volume 0-15 still applies to both the in-game short repeat and finishing tail, and the full Coin Preview still plays the complete effect at the selected level.
+- Rebuilt only the Coin sparse ADPCM volume tables for the new 11-block repeat / 35-block finish assets; Playing Card and Discard level tables were preserved byte-for-byte.
+
+0.8.20 (2026-09-10)
+- Preserved the accepted V0.8.19 cap-counter visuals and V0.8.18 in-game Discard SFX fix.
+- Result coin repeat now uses only the first half of the supplied sound (about 0.709 s) while the cap number is still changing.
+- Once the counter reaches its final value, the active half-loop is allowed to reach its boundary and CAP_COUNT_END.WAV plays the second half once so the effect finishes naturally instead of restarting another loop.
+- Added Coin Sound to Volume Adjustment under SOUND EFFECTS with independent Sound ON/OFF, Volume 0-15, and full-length Preview.
+- Coin Preview uses the complete 1.418 s supplied effect; only the results-loop asset is shortened.
+- Coin result volume uses the same 0-15 saved setting model as Playing Card and Discard; runtime loop/end WAV levels are applied with sparse ADPCM-header patches before gameplay to avoid large RAM allocations.
+- SOUND.CFG is extended compatibly from 6 to 8 characters: existing Playing Card/Discard/Music settings stay in their original positions and Coin Sound is appended as chars 6-7.
+- No changes to the V0.8.17 linear cap-number progression, happy/sad artwork, game rules, Ringo CPU, music, or card actions.
+
+0.8.19 (2026-09-10)
+- Preserved the accepted V0.8.18 gameplay, discard-SFX fix, and V0.8.17 smooth happy/sad cap counter animation.
+- Added the supplied 16 kHz mono Coin Sound.wav as CAP_COUNT.WAV for both win (+caps) and loss (-caps) result counters.
+- Result coin audio starts only when the displayed cap number first changes from 0.
+- While the counter is still moving, the audible part of the effect is replayed about every 1.18 seconds.
+- When the displayed counter reaches its final value, no new replay is started; the currently playing WAV is allowed to finish its full natural 1.418-second duration.
+- CAP_COUNT.WAV is streamed with Pip.audioStart() and is never loaded into a JavaScript audio buffer, preserving results-screen heap headroom.
+- No changes to game rules, Ringo CPU, card SFX, music, menus, cap artwork, cap motion, counter progression, or final result hold.
+
+0.8.18 (2026-09-10)
+- Preserved the accepted V0.8.17 smooth cap-counter/results animation unchanged.
+- Fixed in-game Discard SFX reliability on the memory-constrained Pip-Boy.
+- Reduced CARD_DISCARD_OVERLAP.WAV from 20 to 12 IMA-ADPCM blocks by removing only the long trailing silence after the audible discard sound.
+- Runtime discard SFX payload is now about 3.1 KB instead of 5.2 KB, reducing the temporary audioRead allocation at the exact discard action.
+- Updated sparse per-volume discard header patching to the new 12-block runtime file.
+- Discard Preview remains the full separate preview asset and is unchanged.
+
+0.8.17 - 2026-09-10
+- Fixed the win/loss cap-number transition for both happy and sad result animations.
+- Removed the v0.8.16 smoothstep counter curve that caused repeated values followed by uneven integer jumps.
+- Counter progression is now linear and evenly distributed at the Pip-Boy-safe ~12 FPS rate.
+- Small antes count cleanly through individual values; larger antes are spread evenly across at most 36 displayed count frames so the animation stays fast.
+- Removed the counter's left/right slide-bounce; the +/- number now stays centered at a fixed X position while its digits change.
+- Removed the counter fade while counting so rapidly changing digits stay fully readable.
+- Moved the CAPS-label clear region below the counter so CAPS animation redraws can no longer erase the lower part of the changing number.
+- Preserved the v0.8.16 happy-on-win / sad-on-loss cap mapping, 12 FPS cap pop, final no-fade hold, and IMG-buffer release behavior.
+- Game rules, Ringo CPU, gameplay audio, Volume Adjustment, Preview, card SFX, music, menus, ante/funds handling, and all non-results modules are unchanged.
+
+0.8.16 - 2026-09-10
+- Smoothed the win/loss bottle-cap animation while keeping the Pip-Boy-friendly 12 FPS update rate.
+- Replaced the old source-frame skipping behavior (roughly 2-3 animation frames skipped per LCD update) with one logical animation frame per displayed 12-FPS frame.
+- Happy/Sad cap now grows in smaller steps from 88 to 120 pixels and softly settles/pulses to 108 pixels instead of making larger visible size jumps.
+- The cap remains full brightness throughout its visible animation; the old end fade from color 3 -> 2 -> 1 was removed.
+- Counter movement uses a smoother slide/bounce and a smoothstep value progression.
+- CAPS label slides into position in smaller steps and remains visible.
+- At animation completion, the cap, final +/- cap count, and CAPS label are no longer cleared from the screen.
+- The final happy/sad cap remains displayed on the result screen until Rematch/Back causes a redraw.
+- The cap IMG buffer is still released at animation completion, so holding the final picture on the LCD does not keep the ~3.3 KB image buffer allocated.
+- Win still uses CAP_HAPPY.IMG; loss still uses CAP_SAD.IMG; draw still uses CAP.IMG.
+- Game rules, audio, Volume Adjustment, Preview, CPU, card handling, and menus are unchanged from v0.8.15.
+
+0.8.15 - 2026-09-10
+- Added separate happy and sad bottle-cap mascot artwork for the existing results cap animation.
+- PLAYER win now uses CAP_HAPPY.IMG.
+- CPU/Ringo win (player loss) now uses CAP_SAD.IMG.
+- Both supplied assets are 120x111 and use the same existing pop/pulse/bounce/fade cap animation, positioning, counter timing, and CAPS label.
+- Only the image for the current outcome is loaded into RAM; both images are not resident at the same time.
+- Draw results keep the previous CAP.IMG fallback.
+- Added CAP_HAPPY_SOURCE.IMG and CAP_SAD_SOURCE.IMG as exact source copies.
+- No changes to game rules, Ringo CPU, gameplay audio, Volume Adjustment, Preview, card SFX, music, or menu behavior from v0.8.14.
+
+0.8.14 - 2026-09-10
+- Replaced the cap animation artwork with the newly supplied IMG asset.
+- Runtime CAP.IMG now uses the new 120x111 image.
+- CAP_SOURCE.IMG was updated to the same supplied source image.
+- Updated CARAVAN_RESULTS cap positioning so the new non-square image remains visually centered during the existing pop/pulse/bounce/fade animation.
+- The animation timing, cap sizes, counter animation, CAPS label, win/loss results, Rematch/Back behavior, game logic, audio, Preview, and menus are otherwise unchanged from v0.8.13.
+
+0.8.13 - 2026-09-10
+- Fixed the v0.8.12 gameplay Discard sound failing to play.
+- Root cause: v0.8.12 preloaded both 16 kHz gameplay card effects after the renderer. Playing Card was loaded first, and the larger Discard buffer could fail as the second allocation on the constrained Pip-Boy heap.
+- Removed both resident gameplay card-SFX buffers entirely.
+- Playing Card and Discard are now read only when that specific action completes, queued with audioStartVar, and immediately released from JavaScript.
+- This returns roughly 9 KB of persistent heap headroom during the live game while keeping both gameplay card effects at the same 16 kHz rate as music and firmware UI sounds.
+- Added CARAVAN_SFX_LEVELS.BIN, CARAVAN_SFX_APPLY.JS, and SFX.APPLIED so independent Playing/Discard Volume 1-15 still works without runtime scaling allocations.
+- Card-SFX volume is patched before CARAVAN_GAME loads using only each ADPCM block's 3-byte predictor/index header. Playing Card needs 48 header bytes per level and Discard needs 60.
+- If card-SFX volumes have not changed, APP skips the SFX apply helper entirely.
+- The known-good 8 kHz Preview files and CARAVAN_PREVIEW behavior are unchanged.
+- Addressed the LOW_MEMORY crash seen when returning toward the menu after gameplay: after CARAVAN_GAME is removed, APP now gives the event loop an 8 ms handoff before evaluating CARAVAN_MENU again.
+- Removed the redundant extra E.defrag from that result->menu transition because loadMenu() already performs the required defrag.
+- This reduces the return-to-menu memory spike and avoids two back-to-back defrag passes.
+- The v0.8.12 all-16-kHz live game audio architecture, silent game-audio warm start, normal firmware SCROLL sounds, native background-music streaming, Ringo CPU, board, Preview, and results are otherwise unchanged.
+
+0.8.12 - 2026-09-10
+- Reworked the live game audio around one sample rate: 16 kHz.
+- Root cause of the still-different in-game UI sounds: firmware SCROLL/SELECT sounds are 16 kHz while previous Caravan game music was 8 kHz. The firmware intentionally does not reinitialize I2S while audio is already playing, so a 16 kHz UI sound mixed into active 8 kHz music cannot sound exactly like the normal UI sound.
+- Removed GAME_SCROLL_8K.WAV and the custom in-game scroll workaround.
+- In-game card browsing now uses the normal firmware Pip.playSound("SCROLL") again, exactly like outside the game.
+- Re-encoded LAZY_DAYS_TIRED.WAV to 16 kHz IMA-ADPCM so native background music runs at the same rate as firmware UI sounds.
+- Re-encoded CARD_PLAY_OVERLAP.WAV and CARD_DISCARD_OVERLAP.WAV to 16 kHz so custom card effects also match the live game audio engine.
+- Preserved the known-good 8 kHz Discard Preview as the new CARD_DISCARD_PREVIEW.WAV. Volume Adjustment now previews that file, so the working Preview/click behavior remains independent from the 16 kHz gameplay assets.
+- CARD_PLAY_PREVIEW.WAV and LAZY_DAYS_PREVIEW.WAV remain on the known-good Preview path.
+- Added GAME_AUDIO_WARM_16K.WAV, a tiny ~0.19-second 16 kHz digital-silence ADPCM buffer.
+- Game music startup now cold-starts I2S on that real silence, then immediately opens native 16 kHz music while I2S is already running at 16 kHz. This targets the game-load click without adding an audible SELECT/CLICK sound.
+- Gameplay music remains native Pip.audioStart(...,{repeat:true}); no runtime custom music streamer returned.
+- Rebuilt CARAVAN_MUSIC_LEVELS.BIN for the 16 kHz / 2048-byte-block music file. A changed music level requires only 1209 bytes of header data across 403 sparse 3-byte writes.
+- Loading speed: removed the redundant APP post-game-eval E.defrag because CARAVAN_GAME already performs the later pre-renderer defrag.
+- Loading speed: reduced the game's initial boot handoff from 20 ms to 1 ms.
+- The critical defrag after menu unload and the pre-renderer defrag are both preserved.
+- Volume Adjustment behavior, submenu SCROLL sounds, Preview stop fix, game rules, Ringo CPU, board layout, and results are otherwise unchanged.
+
+0.8.11 - 2026-09-10
+- Kept the hardware-confirmed working v0.8.10 Volume Adjustment, Preview, preview-click fix, native game music, card SFX, board, CPU, and results behavior.
+- Fixed the in-game card-browsing SCROLL sound changing character while background music is enabled.
+- Root cause: the firmware SCROLL UI sound is 16 kHz while Caravan background music is 8 kHz. Pip.playSound uses audioStartVar(overlap:true), and the Pip-Boy I2S prepare routine intentionally keeps the current sample rate while audio is already playing. A 16 kHz SCROLL overlapped onto active 8 kHz music therefore plays at the wrong effective rate.
+- Added GAME_SCROLL_8K.WAV, made from the Pip-Boy firmware's own SOUND/FX/PREVNEXT.WAV and resampled to 8 kHz.
+- While background music is ON, all in-game SCROLL events use GAME_SCROLL_8K through audioStartVar at 8 kHz, matching the music engine.
+- While background music is OFF, the game still uses the normal firmware Pip.playSound("SCROLL") exactly, preserving the normal sound heard in the user's music-off test.
+- The tiny GAME_SCROLL_8K buffer is only loaded when music is enabled.
+- Reduced music-volume apply latency again by re-encoding the gameplay music to 8 kHz IMA-ADPCM with blockAlign=2048 instead of 256.
+- Music volume still uses the same sparse 3-byte predictor/index header method, but the long track now has only 201 ADPCM blocks instead of about 1625.
+- A changed Music Volume therefore requires only 603 bytes of header writes across 201 seeks, roughly 8x fewer seek/write operations than v0.8.10.
+- CARAVAN_MUSIC_LEVELS.BIN shrank from about 78 KB to 9648 bytes.
+- Added an APP fast path: when SOUND.CFG Music Volume already matches MUSIC.APPLIED, CARAVAN_MUSIC_APPLY.MIN.JS is not even read/evaluated.
+- Native in-game music still uses Pip.audioStart(...,{repeat:true}); no custom runtime music streamer returned.
+- The proven game-start memory defrag boundaries were kept for stability.
+
+0.8.10 - 2026-09-10
+- Kept the hardware-confirmed working v0.8.9 Volume Adjustment, Preview, SCROLL, click fix, loudness, and game audio assets intact.
+- Removed the SELECT sound specifically from Play and Rematch. All other normal menu SELECT/SCROLL sounds remain.
+- This prevents the 16 kHz SELECT sound from being the last audio event immediately before the 8 kHz Ringo game/music startup.
+- Added an audioIsPlaying guard before native game music starts, so 8 kHz music waits for any older UI audio to physically finish.
+- Reworked CARAVAN_MUSIC_APPLY for substantially faster game loading after a Music Volume change.
+- Previous v0.8.8/v0.8.9 pre-game apply read and rewrote essentially the entire ~416 KB music file in 4 KB chunks.
+- The new sparse apply writes only the 3-byte IMA-ADPCM predictor/index header in each block: 4,875 bytes total instead of ~416 KB.
+- The 253-byte ADPCM payload of every block is never read or rewritten.
+- The selected ~4.9 KB precomputed header table is read once, then unsyncFiles is used for the sparse writes and the WAV is flushed once on close.
+- If Music Volume has not changed, the apply still skips completely.
+- Removed the additional E.defrag() that had been added immediately after the pre-game music apply. The proven critical menu->game defrag and post-game-eval defrag remain.
+- Game music remains firmware-native Pip.audioStart(...,{repeat:true}); no custom runtime music streamer has returned.
+- Game rules, Ringo CPU, board renderer, results, card SFX, Volume Adjustment, and Preview behavior are otherwise unchanged.
+
+0.8.9 - 2026-09-10
+- Fixed the Discard Preview scratch regression introduced after restoring SCROLL sounds throughout Volume Adjustment.
+- Root cause: CARAVAN_PREVIEW.stop() only cleared JavaScript state/timers. It did not physically stop audio that had already been queued by Pip.audioStartVar().
+- If the wheel was moved while an 8 kHz Preview was still physically playing, v0.8.8 immediately started the firmware 16 kHz SCROLL sound. The firmware I2S prepare routine intentionally returns early while I2S is already PLAYING, so the new 16 kHz UI sound could be mixed into the still-running 8 kHz Preview engine, producing scratchy/corrupted audio.
+- CARAVAN_PREVIEW.stop() now force-stops I2S/DMA whenever a Preview had actually started.
+- The force-stop uses a synchronous native audioStart on the existing tiny Discard WAV followed immediately by audioStop. No audio frame can run between those calls, but audioStop then has a valid native stream and therefore invokes the firmware I2S stop.
+- After a manual Preview stop, SCROLL is emitted on a 1 ms event-loop handoff so the next 16 kHz UI sound starts from a stopped engine and can reinitialize the sample rate cleanly.
+- Small Preview completion now verifies Pip.audioIsPlaying() is actually false before declaring Preview finished instead of trusting only the estimated duration timer.
+- SCROLL sounds remain enabled in all Volume Adjustment lists, detail submenus, and during Volume editing.
+- Preview itself still emits no SELECT/CLICK sound.
+- v0.8.8 native in-game music, instant Volume menu behavior, equal loudness, Preview assets, board/game/CPU/results logic, and pre-game music-volume application are unchanged.
+
+0.8.8 - 2026-09-10
+- Removed the custom runtime background-music streamer completely after v0.8.6/v0.8.7 hardware testing showed scratching and LOW_MEMORY problems in live gameplay.
+- Game background music now always uses the firmware-native Pip.audioStart("LAZY_DAYS_TIRED.WAV",{repeat:true}) path again.
+- Added CARAVAN_MUSIC_APPLY.JS and CARAVAN_MUSIC_LEVELS.BIN. Music Volume 1-15 is applied once to the active WAV before CARAVAN_GAME loads, while CARAVAN_MENU is already removed and the game renderer does not yet exist.
+- Volume Adjustment itself remains config-only: turning the knob and pressing to finish only update SOUND.CFG. No music file reads/writes run while the Volume UI is open, so the several-second knob slowdown/background apply from older builds does not return.
+- The pre-game apply only runs when the selected music level differs from MUSIC.APPLIED. Re-entering the game at the same music level skips the apply completely.
+- The pre-game worker uses one 4 KB buffer at a time, unsyncFiles during the in-place update, closes/flushed the WAV once, then restores the previous filesystem flag.
+- After that one pre-game update, there is no custom music timer, no repeated audioStartVar music chunks, no music scaling allocations, and no music filesystem activity during gameplay.
+- Playing Card/Discard gameplay volume remains RAM-scaled as before.
+- The v0.8.4+ clean Preview system, matched loudness, 7.5-second music Preview, and Preview click fix are preserved.
+- Restored firmware SCROLL sounds to every Volume Adjustment list/detail submenu and to Volume editing.
+- If the wheel is moved while a Preview is active/waiting, the Preview UI state is stopped first, then the normal SCROLL sound plays. Preview itself still does not emit SELECT/CLICK, preserving the click fix.
+- Game rules, board rendering, CPU, demo, results, and card-effect timing are unchanged.
+
+0.8.7 - 2026-09-10
+- Fixed the hardware-confirmed LOW_MEMORY crash from v0.8.6.
+- The crash stack points directly to the CARAVAN_MUSIC scale() conversion that duplicated a 2048-byte music chunk into a Uint8Array while the full Caravan game and renderer were resident.
+- Reworked only CARAVAN_MUSIC.JS. Volume Adjustment, Preview, click fix, matched loudness, cards, board, CPU, results, and game UI are unchanged.
+- Music Volume 15 now uses native Pip.audioStart(...,{repeat:true}), restoring the firmware-managed lowest-memory music path when no digital attenuation is needed.
+- Music Volumes 1-14 use a new 256-byte block streamer.
+- The low-memory streamer never converts a full music chunk into a typed array.
+- It reads only one 256-byte IMA-ADPCM block at a time.
+- Only the 3-byte ADPCM predictor/index header is rebuilt with String.fromCharCode; the remaining 253 bytes are reused from the original block string.
+- Maximum temporary JS audio data during scaling is therefore roughly one 256-byte block instead of a 2048-byte string plus a second 2048-byte typed array.
+- The streamer keeps a deep I2S reserve and can feed up to 18 blocks per refill pass with a 20 ms service interval.
+- Volume still applies at playback time, so Volume Adjustment remains config-only and instant with no WAV rewrite.
+- The v0.8.5/v0.8.6 Preview and loudness files are byte-for-byte unchanged.
+
+0.8.6 - 2026-09-09
+- Kept the v0.8.5 Volume Adjustment menus, instant config-only volume changes, equal loudness, Preview click fix, and all Preview behavior unchanged.
+- Fixed the new in-game continuous scratching introduced by the v0.8.5 runtime music streamer.
+- The supplied hardware recording shows the corruption occurring in long blocks separated by quieter gaps, matching music-buffer starvation/restarts rather than a bad source WAV.
+- Reworked only CARAVAN_MUSIC.JS.
+- Reduced runtime music chunks from 4096 bytes to 2048 bytes, matching the safe chunk size already used by the working 7-second Music Preview.
+- CARAVAN_MUSIC now immediately prebuffers multiple 2 KB ADPCM chunks before gameplay continues.
+- Runtime service keeps a deep I2S reserve instead of waiting until the ring is nearly depleted.
+- The service checks every 18 ms and can feed up to three 2 KB chunks in one callback when reserve is low.
+- This leaves roughly 0.8-1.5 seconds of queued music so expensive game-board redraws should not starve I2S.
+- Preventing ring starvation also prevents the firmware DMA path from padding a partially empty buffer with the last audio sample, the likely source of the loud held-sample scratch/buzz.
+- Music Volume 0-15 is still applied in RAM while chunks are streamed, so Volume Adjustment remains instant and no WAV file is rewritten.
+- Playing Card and Discard gameplay/Preview audio are untouched.
+- No changes were made to CARAVAN_SOUND, CARAVAN_PREVIEW, game rules, CPU logic, board layout, results, or the v0.8.4/v0.8.5 Preview fix.
+
+0.8.5 - 2026-09-09
+- Kept the v0.8.4 Preview click fix that hardware confirmed working.
+- Used the clean Discard sound as the loudness reference. Playing Card gameplay, Playing Card Preview, full Lazy Days music, and Lazy Days Preview are normalized to the same decoded Volume-15 peak (-4.57 dBFS) as Discard.
+- Playing Card Preview keeps the v0.8.4 clean onset treatment but is normalized after trimming/fading, fixing the noticeably quiet Preview.
+- Lazy Days Preview keeps its natural clean lead-in and 7.5-second duration.
+- Default SOUND.CFG is now 1F1F1F so Playing Card, Discard, and Music all start at the same Volume 15 instead of Music starting at Volume 10.
+- Completely removed runtime audio-file rewriting from Volume Adjustment.
+- Removed CARAVAN_AUDIO_APPLY.JS, CARAVAN_AUDIO_LEVELS.BIN, and SOUND.APPLIED.
+- Added CARAVAN_MUSIC.JS. The long gameplay music now streams in 4096-byte ADPCM chunks and applies the selected 0-15 music volume in RAM while each chunk is read.
+- Because Music Volume is now runtime-scaled, finishing a Music Volume edit only writes the tiny 6-byte SOUND.CFG. There is no background WAV rewrite to slow the knob for several seconds.
+- Playing Card and Discard already use the same RAM volume-scaling design in Preview/game, so all three current custom audio types now apply volume without modifying their WAV files.
+- Future short sound effects can use the existing RAM scaler, and future streamed music can use CARAVAN_MUSIC without adding per-volume WAV variants.
+- CARAVAN_MUSIC waits for prior UI audio to finish before starting its 8 kHz stream, loops the music, and keeps the card-effect overlap path unchanged.
+- The working Caravan board/game/results architecture and v0.8.4 clean Preview onset behavior are otherwise unchanged.
+
+0.8.4 - 2026-09-09
+- Targeted the remaining Preview click based on the confirmed hardware result that Discard Preview is clean while Playing Card and Music still click.
+- Compared the supplied source audio. Playing Card has a small early transient near the beginning followed by a noticeable quiet gap before the main card movement; Discard moves into its main sound much sooner, so that early onset is not heard as a separate click.
+- The previous Lazy Days preview began almost exactly at the song's first audible sample around 0.42 seconds, creating a much harder onset than the clean Discard sound.
+- Added CARD_PLAY_PREVIEW.WAV as a preview-only clean-start version. It removes the isolated early Playing Card onset, adds 80 ms of file-level silence, and fades smoothly into the main card sound. The actual gameplay CARD_PLAY_OVERLAP.WAV is unchanged.
+- Rebuilt LAZY_DAYS_PREVIEW.WAV from the beginning of the supplied music instead of cutting directly to its first audible sample. It keeps the source's natural ~0.42-second silent lead-in, softly fades into the music, and is 7.50 seconds long so more than seven seconds of the preview remain available.
+- Discard Preview audio is unchanged and remains the known-good reference.
+- CARAVAN_PREVIEW now prepends one valid 256-byte ADPCM silence block inside the SAME audioStartVar buffer as every small preview. Long streamed previews receive the same prefix only on their first chunk.
+- Because the silence and requested audio are one playback buffer, this does not introduce a second prime->sound transition.
+- The same clean-start prefix is generic and automatically applies to future sounds handled by CARAVAN_PREVIEW.
+- No DAC-register manipulation, Pip.setVol changes, or SELECT/CLICK sound is added to Preview.
+- Normal Volume Adjustment SCROLL audio remains enabled.
+- Volume application and gameplay behavior are unchanged from v0.8.3.
+
+0.8.3 - 2026-09-09
+- Reworked Preview around the confirmed hardware result that Discard Preview is clean.
+- Added CARAVAN_PREVIEW.JS as one generic preview engine for Playing Card, Discard, Music, and future 8 kHz / 256-byte-block IMA-ADPCM preview sounds.
+- Playing Card and Discard now use the same clean small-sound route: wait for UI audio to finish -> Pip.audioRead -> in-RAM volume scaling -> Pip.audioStartVar(..., overlap:true).
+- The engine requires Pip.audioIsPlaying() to be false across two checks before starting Preview. This prevents an immediately preceding 16 kHz SCROLL/SELECT sound from leaving I2S running at 16 kHz when the 8 kHz Preview starts.
+- Opening Volume Adjustment from the Caravan main menu no longer plays the parent's SELECT sound. Normal SCROLL UI audio remains enabled while navigating/adjusting inside Volume Adjustment.
+- Removed all Preview DAC-register mute/unmute writes, Pip.setVol changes, silence-prime buffers, and warm-I2S experiments. Preview now uses a direct clean audio path with no codec manipulation.
+- Preview itself emits no SELECT/CLICK sound.
+- Fixed the 7-second music Preview so it no longer tries to audioRead/decode the entire ~28 KB ADPCM preview in one Pip.audioStartVar call.
+- CARAVAN_PREVIEW streams LAZY_DAYS_PREVIEW.WAV in 2 KB / 8-block ADPCM chunks through Pip.audioStartVar. Each chunk stays well within the firmware's internal decode buffer.
+- Sequential music chunks use overlap:false so they append instead of mixing on top of one another.
+- Music streaming keeps less than roughly 0.6 seconds queued at once, so STOP remains responsive.
+- Music Preview remains a full 7 seconds.
+- Playing Card/Discard gameplay volume continues to apply instantly in RAM. Long gameplay music volume saving continues in the background with the existing fast music-only apply worker.
+- The working Caravan game architecture and game-start memory boundary are unchanged.
+
+0.8.2 - 2026-09-09
+- Increased Lazy Days Tired music Preview from about 1.8 seconds to 7.0 seconds.
+- Music Preview still uses the same buffered Pip.audioRead + Pip.audioStartVar(..., overlap:true) path introduced in v0.8.1.
+- Kept the short fade-in and added a short fade-out near the end of the 7-second preview.
+- No changes to Playing Card/Discard Preview behavior, gameplay audio, volume application, or Caravan game logic.
+- LAZY_DAYS_PREVIEW.WAV is now 28510 bytes.
+
+0.8.1 - 2026-09-09
+- Reworked Preview again based on the hardware result that Discard Preview was clean while Playing Card/Music still produced the pre-audio click and Music Preview did not play.
+- All current previews now use the exact same buffered Pip.audioRead + Pip.audioStartVar(..., overlap:true) route used by the clean Discard Preview.
+- Added one small LAZY_DAYS_PREVIEW.WAV (~7518 bytes) so music Preview no longer uses Pip.audioStart streaming at all. It is a short 1.8-second buffered clip from the supplied Lazy Days source, with a short fade-in/out.
+- Preview startup no longer uses zero-filled IMA-ADPCM as silence. Zero ADPCM nibbles are not true digital silence and can decode into an audible signal. The new prime uses real 16-bit PCM zero samples.
+- Before every Preview, the DAC is muted, a 4096-byte true PCM8k silence buffer cold-starts I2S, the requested buffered preview is queued while I2S is already running, then the DAC is unmuted while the real PCM silence is still in the DMA buffers.
+- No SELECT/CLICK sound is emitted on the Preview action.
+- SCROLL UI sound is restored while navigating/adjusting Volume, except while a Preview is actively running so a 16 kHz UI sound is not mixed into the 8 kHz Preview engine.
+- Playing Card and Discard gameplay WAV files are now kept full-volume on storage. Their 0-15 settings are applied instantly in RAM when Preview/game loads the tiny buffers. They no longer require any SD-card rewrite.
+- The same generic RAM ADPCM scaler is used for both current small sound effects and can be reused for future buffered sound effects.
+- Music Preview is also scaled in RAM immediately from its full-volume short preview file, so it does not wait for the full gameplay music file to finish saving.
+- Only the long streamed gameplay music needs an SD update. Its save now continues in the background after finishing the Volume edit; the Volume menu and Music Preview no longer wait on that operation.
+- The music apply worker still uses only one 4 KB buffer at a time but handles up to 16 chunks per callback instead of 8 to reduce wall time.
+- Back waits only if the streamed music file is still finishing its background save, preventing the game from starting with a half-written music file.
+- Music ON/OFF and Volume 0-15 still apply to the actual game. Playing Card/Discard ON/OFF and Volume 0-15 also still apply to the actual game.
+- The working v0.6.0 modular game architecture and fast game-start memory boundary are preserved.
+0.8.0 - 2026-09-09
+- Completely rebuilt Volume Adjustment and all of its submenus from scratch.
+- The old accumulated Preview/priming/restore code was removed instead of patched again.
+- The rebuilt Volume Adjustment menu intentionally plays no Pip.playSound UI effects at all. Turning the wheel, entering a sound, editing Volume, applying Volume, and pressing Preview are silent UI actions; Preview audio is the only sound generated by this menu.
+- Rebuilt all three Caravan audio assets directly from the user's newly supplied source WAV files. The supplied sources themselves start cleanly/silently, confirming the loud pre-Preview artifact was not baked into the source audio.
+- Added a new warm-preview engine inside CARAVAN_SOUND. It keeps the Pip-Boy I2S audio engine alive with a tiny 256-byte in-memory ADPCM silence block while Volume Adjustment is open.
+- Entering Volume Adjustment normally extends the parent menu's already-playing SELECT audio into the silent keep-alive, avoiding a cold audio restart.
+- If the audio engine is already stopped, the menu uses a temporary 3328-byte zero ADPCM prime while the DAC is muted, then releases that buffer.
+- Playing Card and Discard Preview are mixed into the already-running silent engine with audioStartVar(..., overlap:true), matching the in-game mixer path without a cold audio start.
+- Music Preview waits for only a small keep-alive tail, then starts LAZY_DAYS_TIRED.WAV while I2S is still active. It does not cold-start the audio engine when Preview is pressed.
+- Removed all per-Preview Pip.setVol calls and all per-Preview firmware SELECT/CLICK/HIGHLIGHT/SCROLL sounds.
+- Completely rewrote the Volume apply worker again for speed. Instead of 1,600+ individual 3-byte writes, it updates 4 KB ADPCM chunks and patches the precomputed headers in RAM, doing up to eight chunks per event-loop turn.
+- The new worker keeps unsyncFiles enabled only while the active WAV is open and restores the previous flag after close/flush.
+- Volume changes save immediately and apply in the background; the menu no longer blocks input on a dedicated multi-second Applying screen.
+- Preview requested while a file is being updated waits for that update to finish, then starts automatically.
+- ON/OFF still applies to actual gameplay through SOUND.CFG. Volume 0-15 still modifies the active gameplay files.
+- Exactly three audio-content WAVs remain: CARD_PLAY_OVERLAP.WAV, CARD_DISCARD_OVERLAP.WAV, and LAZY_DAYS_TIRED.WAV. No extra silence WAV was added.
+- The working v0.6.0 modular game architecture and game-start memory fix remain unchanged.
+0.7.0 - 2026-09-09
+- Reviewed the supplied hardware videos and rebuilt both problem areas instead of increasing delays again.
+- The repeated loud Preview artifact occurs during Preview STARTING, before the requested music begins. The audio files themselves are not the source because the same files play cleanly in-game.
+- Replaced the old Pip.setVol-based Preview priming with ES8388 codec-level click protection.
+- Preview now enables the codec ClickFree bit, enables DAC soft-ramp, mutes with DAC Control 3, cold-starts 8 blocks / about 0.5 sec of in-memory digital ADPCM silence, unmutes with soft-ramp while silence is still playing, then starts the requested Preview while I2S/DMA is already active.
+- This avoids audible cold I2S/DMA startup without changing the analog output-volume registers and without adding another WAV file.
+- Music Preview still uses the same LAZY_DAYS_TIRED.WAV as gameplay. Playing Card and Discard Preview still use the same audioStartVar overlap route as gameplay.
+- Completely rewrote the volume-apply helper for speed.
+- Previous builds rewrote every 256-byte ADPCM block even though only its first 3 predictor/index bytes change with the current volume method. Music therefore moved about 414 KB through JavaScript every time Volume was applied.
+- New CARAVAN_AUDIO_APPLY writes only the 3-byte ADPCM headers: 4,854 bytes for the entire music track instead of about 414,208 bytes, roughly 85x less JS file data.
+- Added one CARAVAN_AUDIO_LEVELS.BIN sidecar containing precomputed ADPCM headers for volume levels 0-15. This is one small BIN file, not extra WAVs.
+- Music apply uses only about seven 256-header worker turns. Playing Card and Discard apply in one tiny turn.
+- unsyncFiles is enabled only while the active WAV/header table are open; the WAV is closed/flushed before the previous filesystem flag is restored.
+- Exactly three WAV files remain.
+- The proven v0.6.0 modular game architecture and v0.6.5 fast/safe game startup remain unchanged.
+- ON/OFF and Volume 0-15 still apply to actual gameplay. Card effects still overlap music and music still loops with repeat:true.
+0.6.8 - 2026-09-09
+- Rebased this fix on the working v0.6.6 holotape/menu architecture after v0.6.7 caused a black screen on holotape launch.
+- Did not move Volume Adjustment into a new top-level APP-owned module; the v0.6.6 startup path is preserved.
+- Increased volume-apply work from 8 ADPCM blocks / 2 KB per event-loop turn to 24 blocks / 6 KB per turn. This is approximately 3x fewer worker turns while remaining much more conservative on heap than the failed v0.6.7 architecture.
+- Removed intermediate percentage redraws during volume application. The screen shows Applying volume... once and redraws when complete, reducing display overhead.
+- Removed Pip.setVol() and restore-volume writes from Preview completely. The active WAV already contains the selected level, so the extra hardware-volume write was unnecessary and was the common operation immediately before every loud Preview click.
+- Music Preview now starts the same active LAZY_DAYS_TIRED.WAV without changing hardware volume first.
+- Playing Card and Discard Preview use the same audioRead + audioStartVar overlap path as gameplay and keep a tiny cached preview buffer while their detail screen is open.
+- Card preview buffers are loaded after entering the detail page instead of when Preview is pressed, and are refreshed once after a card-volume change is applied.
+- No SELECT sound is played immediately before Preview.
+- Volume 0-15 and ON/OFF continue to apply to actual gameplay.
+- Exactly three WAV files remain.
+- The v0.6.0 modular game architecture and v0.6.5 fast/safe game-start path remain unchanged.
+0.6.6 - 2026-09-09
+- Fixed the multi-second freezes inside Volume Adjustment.
+- Removed the E.defrag() pause when opening Volume Adjustment. The critical menu-to-game defrag that protects CARAVAN_RENDERER remains unchanged.
+- Reworked CARAVAN_AUDIO_APPLY into an asynchronous chunked worker. Large music-volume changes now process only 8 ADPCM blocks / 2048 audio bytes per event-loop turn instead of rewriting the entire 414 KB music file in one blocking callback.
+- The Volume Adjustment screen remains responsive while applying and displays Applying volume... with progress.
+- Turning ON/OFF no longer runs the audio apply helper because enable/disable state only needs SOUND.CFG; no WAV rewrite is required.
+- Pressing Preview no longer re-runs the volume apply helper. Volume is applied once when the edit is finished.
+- Removed the firmware SELECT sound immediately before Preview. This was overlapping the preview start and was the likely source of the loud click heard before music/card previews.
+- Playing Card and Discard Preview now use the same Pip.audioRead + Pip.audioStartVar ADPCM path as actual gameplay instead of Pip.audioStart(path).
+- Music Preview continues to use the same LAZY_DAYS_TIRED.WAV and Pip.audioStart path as gameplay.
+- Preview and gameplay still use the same active 3 WAV files at the same Pip-Boy master output, so the applied volume continues to match.
+- If Preview is requested while a volume apply is still running, it is queued and starts automatically after the apply completes.
+- Back can be requested while applying; the UI remains responsive and returns after the file is safely finished rather than leaving a partially rewritten WAV.
+- V0.6.5 fast/safe game startup and V0.6.0 modular renderer memory architecture are preserved.
+- No gameplay rules, Ringo logic, board layout, Results animation, card timing, music looping, or gameplay sound-over-music behavior were changed.
+
+0.6.5 - 2026-09-09
+- Reduced game-start delay without undoing the v0.6.0 renderer memory fix.
+- Removed the redundant audio-settings check/apply from APP immediately before every game launch.
+- v0.6.4 already applies the active WAV volume when a setting is changed in Volume Adjustment, so rereading SOUND.CFG/SOUND.APPLIED and potentially loading CARAVAN_AUDIO_APPLY again at Play time was unnecessary.
+- Game startup is back to the safer/faster modular boundary: unload CARAVAN_MENU -> E.defrag() -> load/eval CARAVAN_GAME -> renderer/game initialization.
+- Kept the critical defragmentation steps that protect CARAVAN_RENDERER from the previous LOW_MEMORY crash.
+- Kept card-effect buffers loading after the first board draw, not before renderer creation.
+- Added a final safety apply if Volume Adjustment is removed while a volume edit is still active, so a changed level cannot be left unapplied.
+- Preview and gameplay still use the same three active WAV files and therefore the same applied volume.
+- Playing Card/Discard ON/OFF, Music ON/OFF, Volume 0-15, card-over-music playback, and music repeat:true behavior are unchanged.
+- No game rules, Ringo logic, board layout, Results animation, or sound timing were changed.
+
+0.6.4 - 2026-09-09
+- Fixed Preview vs gameplay volume mismatch.
+- Root cause: v0.6.3 Preview used the full-volume source WAV plus Pip.setVol(level), while gameplay used a volume-applied WAV at fixed master volume. Those were two different playback paths and did not sound equally loud on hardware.
+- Preview and gameplay now use the exact same active WAV files at the exact same Pip-Boy master volume.
+- Caravan now has only three WAV files total: LAZY_DAYS_TIRED.WAV, CARD_PLAY_OVERLAP.WAV, and CARD_DISCARD_OVERLAP.WAV.
+- Removed separate CARD_PLAY.WAV, CARD_DISCARD.WAV, and LAZY_DAYS_GAME.WAV copies.
+- Volume Adjustment applies SOUND.CFG to the active gameplay WAV before Preview plays it, so Volume 10 in Preview is the same file/level that Volume 10 uses in-game.
+- Finishing a volume edit immediately applies the new level to the active file.
+- Entering volume edit stops an active Preview first so the large music WAV is never rewritten while it is playing.
+- ON/OFF changes remain stored in SOUND.CFG and are applied immediately. The game still skips disabled sounds entirely.
+- Volume 0 remains silent.
+- Pip.setVol remains fixed at normal Pip-Boy master volume during gameplay/card effects, preventing background-music pumping.
+- Playing Card and Discard continue to overlap music; music remains repeat:true and loops naturally.
+- Preserved the working v0.6.0 modular memory architecture and v0.6.3 temporary audio-apply design.
+- No Caravan rules, Ringo behavior, board layout, Results animation, or card timing behavior were changed.
+
+0.6.3 - 2026-09-09
+- Fixed Volume Adjustment so the selected 0-15 level is actually applied to gameplay for Playing Card, Discard, and Lazy Days Tired.
+- Playing Card OFF now prevents its gameplay buffer from loading/playing. Discard OFF does the same. Background Music OFF prevents the game music stream from starting.
+- Volume 0 also acts as silent for the selected gameplay sound even if its ON toggle is enabled.
+- Preserved the successful v0.6.0 modular memory architecture.
+- No 15-level WAV duplication: gameplay still uses only three active WAVs (Playing Card, Discard, and music).
+- Added a small CARAVAN_AUDIO_BASE.BIN containing only the original 3-byte IMA-ADPCM block headers, not duplicate audio tracks.
+- Added CARAVAN_AUDIO_APPLY.MIN.JS. It is loaded only when SOUND.CFG differs from SOUND.APPLIED, after the large menu module is unloaded and before the game/renderer are loaded.
+- The helper applies the requested volume directly to the three gameplay WAV block headers in place, then unloads. This lets all three sounds keep independent 0-15 settings while Pip.setVol remains fixed at the Pip-Boy's normal master volume during the match.
+- Because gameplay no longer changes Pip.setVol for individual sounds, Playing Card/Discard no longer make the background music jump louder/quieter.
+- LAZY_DAYS_TIRED.WAV remains the full-volume menu Preview source; gameplay uses LAZY_DAYS_GAME.WAV so the Preview volume control remains independent from the applied game file.
+- Music still loops naturally with repeat:true and is never stopped/restarted by Playing Card/Discard effects.
+- Playing Card/Discard still overlap the music and are triggered after the board redraw so the sound lines up with the card being visually played/discarded.
+- The same applied-settings pattern can be extended to future custom Caravan sounds without creating 15 WAV copies for each sound.
+- UI SCROLL remains a separate firmware UI sound.
+0.6.0 - 2026-09-09
+- New modular memory architecture after repeated LOW_MEMORY failures while CARAVAN_RENDERER was being instantiated.
+- The latest device stack failed inside rendererFactory(), proving that the remaining resident startup footprint was still too large before the board could exist.
+- APP.JS is now a tiny resident controller instead of the full Caravan menu/UI/game/results controller.
+- Moved the full Caravan menus, betting/deck screens, Rules/Controls, Demo launcher, Volume Adjustment launcher, and Results UI into CARAVAN_MENU.MIN.JS.
+- CARAVAN_MENU is completely removed and its references are cleared BEFORE CARAVAN_GAME.MIN.JS is read or evaluated.
+- E.defrag() runs across that menu-to-game memory boundary.
+- During gameplay the device now keeps only the tiny APP controller plus CARAVAN_GAME/renderer/audio state; the old ~15 KB APP menu closure is no longer resident beside the game.
+- When a match ends, CARAVAN_GAME is removed first, then the menu module is loaded again for the Results screen/animation.
+- Loading remains black with no premature YOUR TURN text or horizontal line; the normal game renderer reveals the complete board only after game startup succeeds.
+- V0.5.47 card SFX behavior is preserved: both tiny Playing Card/Discard buffers are loaded after the first full board draw but before input, card SFX overlap the music, no retry system is used, and Lazy Days Tired remains repeat:true.
+- UI SCROLL remains separate from custom card SFX.
+- No Caravan gameplay rules, Ringo behavior, board layout, results animation, ante/funds behavior, or volume settings were intentionally changed.
+
+0.5.47 - 2026-09-09
+- Rebased startup on the known-working v0.5.42 game architecture after v0.5.46 could remain black after pressing Play Caravan.
+- Removed the temporary YOUR TURN text and horizontal line from APP while the game is loading.
+- Removed the v0.5.46 multi-stage reveal/preload timer chain and Uint8Array deck change.
+- Restored the normal JavaScript deck representation and the single v0.5.42 startup timer.
+- Startup now loads renderer, shuffled decks, opening hands and sound config, completes the first full board draw, then loads the two tiny card SFX buffers, then enables input and starts music.
+- Card SFX are not resident during the renderer's first draw, avoiding the v0.5.44 renderer LOW_MEMORY peak.
+- Both card SFX are resident before the player can act, with no retry system and no per-action SD read.
+- Playing Card / Discard use audioStartVar(..., {overlap:true}) over Lazy Days Tired.
+- Lazy Days Tired is never stopped/restarted by card actions and continues to loop naturally with repeat:true.
+- UI SCROLL remains on the firmware Pip.playSound("SCROLL") path, separate from the custom card-effect buffers/settings.
+- No game rules, Ringo behavior, board layout, results animation, or volume settings were changed.
+
+0.5.42 - 2026-09-09
+- Reworked the runtime after the v0.5.41 test was globally slow, paused after the board appeared, delayed Playing Card/Discard SFX, and still hit LOW_MEMORY on Ringo's first response.
+- Removed CARAVAN_CPU as a dynamically evaluated module entirely. Ringo now uses a compact inline, allocation-light greedy move picker with the same Caravan play legality rules and lightweight sold/bust/face-card heuristics.
+- Eliminated the CPU API object/module closure and all CPU eval/defrag startup pauses.
+- Optimized canPlay() so face cards use one direct rank check instead of nested isKing/isQueen/isJack/isJoker calls. This directly removes the hot call chain shown in the latest LOW_MEMORY stack.
+- Optimized game and renderer total() calculations to use direct packed-card rank bits instead of repeated helper-function calls.
+- Removed CARAVAN_AUDIO as a dynamically evaluated module. Background music and short overlap SFX now share the existing game closure, eliminating the post-board audio-module eval pause.
+- Playing Card/Discard effects now start after a single 1 ms event-loop handoff. The board redraw completes first, but the previous artificial 80 ms delay is gone.
+- Overlap SFX remain 8 kHz mono IMA-ADPCM and continue over Lazy Days Tired without stopping/restarting the music.
+- Ringo think time reduced from 3-7 seconds to about 1.5-3 seconds.
+- Startup is now: renderer -> decks/hands -> 6-byte sound config -> board -> controls -> music on next event-loop turn. There is no CPU preload and no audio-module eval after the board appears.
+- Managed SOUND.CFG uninstall cleanup, Volume 0-15, preview sounds, music credit, game rules, board layout, and results animation remain intact.
+
+0.5.41 - 2026-09-09
+- Fixed the first-turn crash when the player successfully played a card.
+- The device stack showed LOW_MEMORY inside renderer.draw()/caravan()/total()/cardRank after playSelectedCard.
+- Root cause: the overlapping card-effect buffer was being allocated before afterMove() performed its full board redraw, leaving too little temporary heap for the renderer.
+- Playing Card / Discard SFX are now queued for 80 ms; the board redraw and knob callback finish first, then E.defrag() runs and the short overlap buffer is loaded.
+- This keeps Lazy Days Tired running continuously while the effect plays, but removes the audio buffer from the renderer's peak-memory window.
+- Converted Lazy Days Tired from 16 kHz PCM to stock-style 8 kHz mono IMA-ADPCM (256-byte blocks). The song and loop behavior are unchanged, but the file is much smaller and should start with less visible UI blocking.
+- Removed two redundant CPU-adjacent E.defrag() calls from startup; the compact CPU loader still performs its own defrag at the safe point.
+- Initial game handoff reduced from 60 ms to 35 ms and background-music launch delay reduced from 120 ms to 70 ms.
+- Compact CPU preload-before-music ordering, managed SOUND.CFG cleanup, Volume 0-15, previews, credits, gameplay rules, renderer layout, and results animation are preserved.
+
+0.5.40 - 2026-09-09
+- Fixed Playing Card and Discard gameplay sounds not being audible over Lazy Days Tired.
+- Rebuilt the two overlap-only card-effect WAVs to match the stock Atomic holotape audioStartVar format: 8 kHz mono IMA ADPCM with 256-byte blocks.
+- CARAVAN_AUDIO now uses {encoding:"adpcm", sampleRate:8000, blockAlign:256, overlap:true}, matching the Pip-Boy's proven stock overlapping-effect path.
+- The louder 16 kHz PCM CARD_PLAY.WAV and CARD_DISCARD.WAV files remain unchanged for Volume Adjustment Preview.
+- Smoothed and slightly accelerated game startup:
+  - Initial game boot handoff reduced from 80 ms to 60 ms.
+  - Ringo's compact CPU module now finishes loading before the first full board draw, so the board does not appear and then freeze while CPU setup happens.
+  - Controls become active immediately when the board is drawn.
+  - Background music starts about 120 ms after the playable board appears instead of waiting through the previous extra CPU/audio delays.
+- CPU still loads before music, protecting the low-memory fix.
+- Background music continues playing while card effects overlap it.
+- Managed SOUND.CFG cleanup, volume controls, previews, credits, game rules, renderer, and results animation remain unchanged.
+
+0.5.39 - 2026-09-09
+- Fixed the LOW_MEMORY crash 5-10 seconds into the game when Ringo's CPU module was first evaluated.
+- Device output showed the failure at the end of CARAVAN_CPU.MIN.JS during the first Ringo-turn load.
+- CARAVAN_CPU.MIN.JS was rewritten with the same scoring/decision constants and behavior in a substantially smaller runtime.
+- Ringo's CPU is now preloaded after the board is drawn, before controls are enabled and before CARAVAN_AUDIO.MIN.JS/background music is loaded.
+- This removes the CPU eval allocation spike from Ringo's first actual turn.
+- The CPU source string is explicitly released and E.defrag() runs before the CPU closure is created.
+- After CPU preload, controls attach; the audio module starts about 300 ms later.
+- Lazy Days Tired still loops continuously and Playing Card/Discard effects still overlap it without stopping the song.
+- Managed SOUND.CFG cleanup, Volume 0-15, previews, renderer layout, game rules, and results animation are preserved.
+
+0.5.38 - 2026-09-09
+- Fixed another LOW_MEMORY crash while CARAVAN_GAME itself was being evaluated before the board finished loading.
+- Rebased CARAVAN_GAME on the smaller known-working v0.5.30 game runtime instead of continuing to grow the main game module.
+- Removed all background-music and overlap-buffer implementation from CARAVAN_GAME.
+- Added CARAVAN_AUDIO.MIN.JS as a separate audio runtime loaded 500 ms after the board is drawn and input is attached.
+- Lazy Days Tired starts from CARAVAN_AUDIO and loops continuously.
+- Playing Card and Discard effects still use overlapping audioStartVar playback, so they do not stop/restart the background music.
+- The main game now keeps only one tiny playCardEffect() forwarding hook.
+- Removed the 150 ms Ringo CPU preload. CPU code now loads only when Ringo actually moves, after E.defrag().
+- Renderer loads after an 80 ms handoff and E.defrag(); decks and opening hands are allocated only after renderer load succeeds.
+- Managed SOUND.CFG uninstall cleanup, Volume 0-15, previews, credits, game rules, CPU logic, renderer layout, and results animation remain intact.
+
+0.5.35 - 2026-09-09
+- Fixed SOUND.CFG being left behind after Caravan was uninstalled/deleted.
+- SOUND.CFG was previously created only at runtime, so the Pip-Boy installer did not know the file belonged to Caravan and therefore did not remove it during uninstall.
+- SOUND.CFG is now included in metadata.json as a managed Caravan storage file with default value 1F1F1A.
+- The Volume Adjustment menu can continue updating SOUND.CFG normally, but uninstall/delete can now remove it together with the rest of the Caravan files.
+- This also allows the empty /HOLO/CARAVAN directory to disappear once all managed Caravan files are removed.
+- No gameplay, music, sound-effect, CPU, renderer, or results behavior was changed.
+
+0.5.34 - 2026-09-09
+- Fixed the LOW_MEMORY crash when the game switched to Ringo's turn.
+- The crash stack showed CARAVAN_GAME was trying to eval CARAVAN_CPU.MIN.JS from loadCpuModule().
+- V0.5.33 preloaded the CPU module only 150 ms after the player's move, while the temporary overlapping card-effect buffer was still in memory for roughly 0.6-0.7 seconds.
+- Removed the 150 ms CPU preload completely.
+- Ringo's CPU module is now loaded only when his actual move executes after the normal 3-7 second think delay, after the temporary card-effect audio buffer has already been released.
+- The temporary effect references are explicitly cleared and E.defrag() runs immediately before loading the CPU module.
+- Background music continues uninterrupted beneath card effects.
+- No CPU decision logic, game rules, renderer behavior, sound settings, or result animation was changed.
+
+0.5.33 - 2026-09-09
+- Fixed background music stopping when Playing Card or Discard sound effects play.
+- Gameplay card effects no longer use Pip.audioStart(), which replaced the active looping music stream.
+- Added small 16 kHz mono IMA-ADPCM overlap copies of the two card effects.
+- Gameplay now loads only the short requested effect and plays it with Pip.audioStartVar(..., {overlap:true}), matching the Pip-Boy's stock overlapping-sound approach.
+- Lazy Days Tired remains playing continuously underneath card-play/discard effects and is not restarted after them.
+- The temporary effect buffer is released immediately after the short effect ends to protect game memory.
+- Separate 0-15 effect volume is preserved. Because Pip-Boy master volume is global, the music may briefly follow the effect level while the effect is sounding, then returns to its configured background-music level without stopping or restarting.
+- Existing music loop, music ON/OFF, previews, credits, gameplay, renderer, and results behavior are otherwise unchanged.
+
+0.5.32 - 2026-09-09
+- Replaced LAZY_DAYS_TIRED.WAV with the newly supplied trimmed Lazy Days Tired WAV.
+- Applied the same peak-normalization method used for the Playing Card and Discard sound effects.
+- Background music source peak increased from approximately -4.78 dBFS to -1.50 dBFS, about +3.28 dB of source gain.
+- Preserved 16 kHz mono 16-bit PCM WAV format, full supplied duration (102.101 seconds), looping gameplay behavior, ON/OFF control, Volume 0-15, and PLAY/STOP preview.
+- No Caravan gameplay, renderer, card sound, results animation, or menu behavior was otherwise changed.
+
+0.5.31 - 2026-09-09
+- Added a BACKGROUND MUSIC section under Volume Adjustment.
+- Added the Lazy Days Tired submenu with Music ON/OFF, Volume 0-15, Preview PLAY/STOP, and Back.
+- Added the on-device credit: "Music by Geoff Harvey from Pixabay"; full linked attribution is included in README.md.
+- Added the supplied LAZY_DAYS_TIRED.WAV as a streamed 16 kHz mono WAV asset.
+- Background music starts only after the Caravan board/renderer has loaded and loops natively while the game is active.
+- Card-play/discard effects temporarily take the audio channel; when each short effect finishes, Lazy Days Tired restarts and continues looping if Background Music is enabled.
+- SOUND.CFG expanded from 4 to 6 characters to store music ON/OFF and volume while remaining backward-compatible with existing 4-character settings.
+- Background Music defaults ON at volume 10; maximum remains 15.
+- Existing card sound menus, louder WAVs, gameplay, results animation, and low-memory game-start path are preserved.
+
+0.5.30 - 2026-09-09
+- Rebased game startup and renderer loading on the known-working v0.5.22/v0.5.18 architecture after v0.5.29 reached YOUR TURN but never drew the actual board.
+- Removed the entire resident gameplay sound engine and SOUND.JSON object from APP memory.
+- Volume Adjustment is now a self-contained module that exists only while that menu is open and is fully removed before game launch.
+- Sound settings are stored in a tiny 4-character SOUND.CFG file instead of keeping a config object alive in APP.
+- CARAVAN_GAME does not load or parse sound settings during startup. The 4-byte config is read only when a card is actually played/discarded.
+- Gameplay WAV playback is direct from CARAVAN_GAME with no separate CARAVAN_SFX runtime module.
+- Game startup unloads the sound menu, defragments, waits 50 ms for the menu event to unwind, defragments again, then loads the proven CARAVAN_GAME.MIN.JS.
+- Playing Card / Discard ON-OFF, 0-15 volume, PLAY/STOP preview, louder WAVs, and the Pixabay credit remain.
+
+0.5.22 - 2026-09-09
+- Replaced the sound preview helper text in both Playing Card and Discard sound menus with:
+  "Sound Effect by Alex from Pixabay"
+- No sound playback, volume, preview, gameplay, or animation behavior changed.
+
+0.5.21 - 2026-09-09
+- Increased the maximum audible level of both Caravan card sound effects without changing the 0-15 menu range or preview controls.
+- Peak-normalized CARD_PLAY.WAV and CARD_DISCARD.WAV to approximately -1.5 dBFS, preserving 16 kHz mono 16-bit PCM streaming and avoiding clipping.
+- Playing Card received about +15.2 dB of source gain; Discard received about +9.8 dB so both effects reach a much stronger maximum at Volume 15.
+- No gameplay logic, sound-menu behavior, preview timing, bottle-cap results animation, or low-memory architecture was changed.
+
+0.5.20 - 2026-09-09
+- Added a Preview: PLAY / Preview: STOP row inside both Playing Card and Discard sound submenus.
+- Preview streams the selected WAV at the currently selected per-effect volume so volume can be tested directly in the settings menu.
+- Preview is available even when the in-game Sound toggle is OFF; the ON/OFF toggle still controls whether the effect plays during actual Caravan gameplay.
+- Preview playback can be stopped immediately, restores the Pip-Boy master volume, and is automatically stopped when leaving the submenu or Volume Adjustment menu.
+- Kept the existing card-play/discard WAV files, low-memory streaming design, gameplay sound triggers, and v0.5.18 results animation unchanged.
+
+0.5.19 - 2026-09-09
+- Added the supplied Playing Card.wav for successful player/CPU card plays and Discard.wav for player/CPU discards.
+- Added a new Volume Adjustment item to the first Caravan menu.
+- Added a low-memory CARAVAN_SOUND.JS settings module with a SOUND EFFECTS menu and highlighted Playing Card / Discard submenus.
+- Added independent Sound ON/OFF toggles and 0-15 volume adjustment for each effect; settings persist in HOLO/CARAVAN/SOUND.JSON.
+- Sound volume is applied relative to the Pip-Boy master volume and restored after each short effect.
+- Streamed WAV playback avoids preloading audio buffers into RAM.
+- Kept the v0.5.18 bottle-cap results animation, 12 FPS timing, layout, and low-memory CAP.IMG path unchanged.
+
+0.5.18 - 2026-09-09
+- Replaced the results-animation bottle-cap artwork with the newly supplied IMAGE (1)(2).IMG source.
+- Kept the exact 12 FPS cap pop/pulse, counter, CAPS bounce/fade, and overall animation timing from v0.5.17.
+- Shifted the cap 22 px toward screen center and shifted the animated +/- counter 5 px toward center so the widget reads as one tighter group.
+- Shifted the entire CAPS label animation 22 px upward and 5 px left so CAPS sits much closer to the animated +/- amount while preserving the same drop/bounce trajectory.
+- Preserved the v0.5.17 low-memory design: one 1,804-byte runtime CAP.IMG loaded only for the results widget.
+- Preserved the newly supplied cap image byte-for-byte as CAP_SOURCE.IMG in the source package.
+
+0.5.17 - 2026-09-09
+- Fixed a LOW_MEMORY/MEMORY crash observed immediately after Ringo won and the results animation began.
+- Deferred results-animation startup by 100 ms so the finished CARAVAN_GAME timer callback can fully unwind before the results module is loaded and memory is defragmented.
+- Replaced the 11,899-byte CAP_ANIM.BIN runtime buffer with one 1,804-byte transparent CAP.IMG.
+- The single 120x120 cap image is scaled at draw time for the 96/108/114/120 pop states and uses display intensity for the fade, preserving the 12 FPS timeline while sharply reducing peak RAM.
+- Kept the supplied CAP_SOURCE.IMG unchanged in the source package.
+
+0.5.16 - 2026-09-09
+- Replaced the results-animation bottle-cap artwork with the newly supplied IMAGE (2).IMG source.
+- Kept the 12 FPS results timing, win/loss layout, and fast 0 -> +/-ante counter behavior from v0.5.15.
+- Merged all eight pre-scaled/fade cap runtime images into one CAP_ANIM.BIN file, reducing the cap animation from eight device files to one.
+- Preserved the supplied cap source byte-for-byte as CAP_SOURCE.IMG in the package source tree; runtime conversion remains transparent 1-bit for low-memory Pip-Boy drawing.
+- Runtime slices only the needed packed frame when the cap state changes and releases the packed buffer when the results module closes.
+
+0.5.15 - 2026-09-09
+- Retimed the results cap animation for the Pip-Boy's 12 FPS target. The supplied 480x320 reference AVI was inspected only for frame-rate/display timing and is not included or played by the holotape.
+- Preserved the original ~3.7 second HUDCaps-style timeline by sampling the 30 FPS source timeline at 12 FPS instead of stretching all 112 source frames to ~9.3 seconds.
+- Moved YOU WIN / RINGO WINS / YOU LOSE above the cap animation.
+- Removed all static cap-win/loss amounts from the result text. The animated cap widget is now the only place that displays the changing +caps / -caps amount.
+- Kept the fast 0 -> +ante and 0 -> -ante counter animation synchronized to the sampled timeline.
+
+0.5.14 - 2026-09-09
+- Added a HUDCaps-style results animation using the supplied Nuka-Cola cap image.
+- Recreated the supplied HUDCaps SWF timeline timing: 112 frames at ~30 FPS with icon pop/pulse, counter slide/bounce, CAPS drop/bounce, hold, and fade-out.
+- Winning results count rapidly from 0 up to +ante caps; losing results count rapidly from 0 down to -ante caps.
+- Loss results now show RINGO WINS, YOU LOSE, and the negative cap amount.
+- Moved the result/menu content lower to leave the center of the 480x320 screen open for the animation.
+- Added a separate CARAVAN_RESULTS.JS runtime module so the animation is loaded only after the match engine is unloaded.
+- Added pre-scaled/dithered 1-bit cap assets to avoid expensive runtime image scaling and alpha work on Pip-Boy hardware.
+
+0.5.13 - 2026-09-08
+- Added full 54-card decks for both player and CPU: all 52 standard cards plus two Jokers.
+- Aces are guaranteed and count as 1.
+- Joker on Ace removes other numeric cards of that suit from both boards.
+- Joker on 2-10 removes other cards of that rank from both boards.
+- Kept J / Q / K support and updated CPU scoring for Jokers.
+- Opening caravan cards are forced to numeric cards.
+- Replaced per-pixel suit drawing with cached 12x12 `.IMG` suit assets.
+- Initial board renders before CPU module lazy-loads.
+- Removed the redundant full-board draw before the CPU turn.
+- Preserved staged Demo rendering and partial selection redraws.
+
+0.5.0
+- Added Jack, Queen, and King cards to the prototype rule engine.
+- Expanded card rendering for face-card ranks.
+
+0.4.8
+- Staged Demo board/hint rendering to reduce watchdog risk.
+- Blocked tutorial input while a staged render is incomplete.
+
+0.3.x
+- Added random deals, CARD ACTION popup, total-card counter, hand scroller, bold/spaced UI, and memory-safe renderer revisions.
+
+0.1.x
+- Initial player-vs-CPU hardware prototype with stable `HOLO/CARAVAN/` runtime path and explicit lifecycle cleanup.
