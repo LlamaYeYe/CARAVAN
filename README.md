@@ -23,6 +23,7 @@ A playable recreation of **Caravan from Fallout: New Vegas** for **The Wand Comp
 - Betting limited by available bottle caps
 - Bottle-cap reset flow when funds run out
 - Animated win/loss result screen
+- Game Over Win sound
 - Configurable sound effects and background music
 - Persistent volume settings
 
@@ -70,17 +71,23 @@ Winning and losing updates each bankroll based on the current wager, and bets ca
 
 If the player runs out of caps, Caravan provides a reset flow that restores both bankrolls so another game can be started.
 
+If the opponent runs out of caps, the player can return to the Caravan menu and reset the bankrolls before starting another game.
+
 ## Low-Memory Runtime
 
-Caravan is split into multiple runtime modules so the Pip-Boy does not need to keep the entire game loaded at once.
+Caravan is split into multiple runtime modules to reduce memory pressure on the Pip-Boy's limited Espruino environment.
 
-The game uses cleanup, garbage collection, and defragmentation around heavier menu, gameplay, and result transitions to reduce memory pressure.
+The game uses cleanup, garbage collection, and memory defragmentation around heavier menu, gameplay, audio, and result transitions.
+
+The gameplay runtime is designed to avoid repeatedly rebuilding large modules between matches. The Engine and idled Game Audio runtime can remain resident across menu visits, while the Renderer can be released when additional menu headroom is required and loaded again when gameplay resumes.
+
+This architecture allows repeated rematches and menu-to-game cycles while keeping memory usage as stable as possible on real hardware.
 
 The result screen also uses a dedicated compact graphics bank:
 
 `CARAVAN_RESULT_CAPS.BIN`
 
-This allows the bottle-cap result artwork to be displayed without loading the larger graphics bank during an already memory-heavy transition.
+This allows the bottle-cap result artwork to be displayed without loading the larger gameplay graphics bank during an already memory-heavy transition.
 
 ## Audio
 
@@ -89,21 +96,26 @@ Caravan includes:
 - Playing Card sound
 - Discard sound
 - Bottle Cap result audio
+- Game Over Win sound
 - Background music
 - Separate sound-effect and music volume settings
 - Persistent audio configuration
 
-Music:
+### Music
 
 **Lazy Day - Tired** — Geoff Harvey from Pixabay
 
-Playing Card and Discard sounds:
+### Playing Card and Discard Sounds
 
 **Alex from Pixabay**
 
-Bottle Cap result audio:
+### Bottle Cap Result Audio
 
 **The Wand Company Pip-Boy 3000**
+
+### Game Over Win Audio
+
+**Sound Distributed From Wand Company MK V (TV Series) PIP-BOY**
 
 ## Thank You
 
