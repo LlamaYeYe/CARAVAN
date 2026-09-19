@@ -31,21 +31,33 @@
         bootTimer = 0,
         finishTimer = 0,
         ready = 0,
-        knob1Attached = 0,
-        knob2Attached = 0,
+        inputAttached = 0,
         faceMode = 0,
         faceBoard = 0,
         faceLane = 0,
         faceCursor = 0,
         faceBase = -1,
+        laneMode = 0,
         message = "YOUR TURN",
-        renderState = 0;
+        renderState = 0,
+        gameNumber = 0;
 
-    // --- Render state ---
+    // --- Diagnostics and render state ---
+    function logEvent(eventName) {
+        try {
+            if (Pip.log) {
+                const memoryState = process.memory();
+                Pip.log("CV G" + gameNumber + " " + eventName + " F" + memoryState.free + " T" + memoryState
+                    .total, "CARAVAN.LOG")
+            }
+        } catch (error) {
+        }
+    }
+
     function createRenderState() {
         return [api[2], playerHand, playerCaravans, cpuCaravans, handIndex, targetIndex, cpuTurn,
             actionMenuOpen, actionSelection, faceMode, faceBoard, faceLane, faceBase, 0, message,
-            -1]
+            -1, laneMode]
     }
 
     function syncRenderState() {
@@ -59,7 +71,8 @@
         renderState[11] = faceLane;
         renderState[12] = faceBase;
         renderState[13] = playerDeck.length - playerDeckPosition + playerHand.length;
-        renderState[14] = message
+        renderState[14] = message;
+        renderState[16] = laneMode
     }
 
     // --- Rendering helpers ---
@@ -99,53 +112,40 @@
         return ""
     }
 
-    // --- Input lifecycle ---
-    function detachInput() {
-        if (knob1Attached) {
-            Pip.removeListener("knob1", onKnob1);
-            knob1Attached = 0
-        }
-        if (knob2Attached) {
-            Pip.removeListener("knob2", onKnob2);
-            knob2Attached = 0
-        }
-    }
 
-    function attachInput() {
-        if (!knob1Attached) {
-            Pip.onExclusive("knob1", onKnob1);
-            knob1Attached = 1
-        }
-        if (!knob2Attached) {
-            try {
-                Pip.onExclusive("knob2", onKnob2);
-                knob2Attached = 1
-            } catch (error) {
-                if (knob1Attached) {
-                    Pip.removeListener("knob1", onKnob1);
-                    knob1Attached = 0
-                }
-                throw error
-            }
-        }
+    function detachInput() {
+        if (!inputAttached) return;
+        Pip.removeListener("knob1", handleKnob);
+        Pip.removeListener("knob2", handleRightKnob);
+        inputAttached = 0
     }
 
     // --- Module/result lifecycle ---
     function releaseGameplayModules() {
         ready = 0;
         detachInput();
+        // Keep the stateless Engine, Renderer, and reusable audio controller
+        // alive for the whole Caravan session. The audio controller has already
+        // been idled by returnResult(), which closes its file, stops music, and
+        // releases the 2.5 KB card-SFX buffer. Only per-match data is discarded.
         renderState = 0;
         message = 0;
         playerDeck = cpuDeck = playerHand = cpuHand = playerCaravans = cpuCaravans = playerDirection = cpuDirection = 0;
+        handIndex = targetIndex = cpuTurn = turnCount = actionMenuOpen = actionSelection = faceMode = faceBoard = faceLane = faceCursor = laneMode = 0;
+        faceBase = -1;
         process.memory(true);
+        logEvent("DATAFREE")
     }
 
     function returnResult() {
-        const outcome = currentResult() || "DRAW";
+        const outcome = currentResult() || "DRAW",
+            done = api[3];
         finishTimer = 0;
+        logEvent("RESULT " + outcome);
         if (audio) audio[2]();
+        logEvent("AUDIOFREE");
         releaseGameplayModules();
-        if (api[3]) api[3](outcome)
+        if (done) done(outcome)
     }
 
     function finishGame(outcome) {
@@ -184,6 +184,15 @@
     function openActionMenu() {
         if (finished || cpuTurn || !playerHand.length) return;
         actionMenuOpen = 1;
+        actionSelection = 0;
+        syncRenderState();
+        Pip.playSound("SELECT");
+        if (renderer) renderer[4](renderState, 0)
+    }
+
+    function openTrackMenu() {
+        if (finished || cpuTurn || laneMode !== 3) return;
+        actionMenuOpen = 2;
         actionSelection = 0;
         syncRenderState();
         Pip.playSound("SELECT");
@@ -337,8 +346,159 @@
         }
     }
 
+    function lanePlayable(laneIndex, card, opening) {
+        if (laneIndex < 0 || laneIndex > 2 || card === undefined) return 0;
+        if (opening && playerCaravans[laneIndex].length) return 0;
+        return engine[4](playerCaravans, playerDirection, laneIndex, card) ? 1 : 0
+    }
+
+    function cancelLaneTarget() {
+        laneMode = 0;
+        actionMenuOpen = 1;
+        actionSelection = 0;
+        targetIndex = 0;
+        message = "YOUR TURN";
+        drawGame()
+    }
+
+    function startLaneTarget() {
+        const card = playerHand[handIndex],
+            opening = engine[1](playerCaravans);
+        let firstLane = -1;
+        for (let laneIndex = 0; laneIndex < 3; laneIndex++) {
+            if (lanePlayable(laneIndex, card, opening)) {
+                firstLane = laneIndex;
+                break
+            }
+        }
+        if (firstLane < 0) {
+            message = "NO VALID CARAVAN";
+            actionMenuOpen = 1;
+            actionSelection = 0;
+            Pip.playSound("SCROLL");
+            drawGame();
+            return 0
+        }
+        actionMenuOpen = 0;
+        actionSelection = 0;
+        laneMode = 1;
+        targetIndex = firstLane;
+        message = "SELECT CARAVAN";
+        drawGame();
+        return 1
+    }
+
+    function finishNumberPlay() {
+        const card = playerHand[handIndex];
+        const opening = engine[1](playerCaravans);
+        if (card === undefined || targetIndex < 0) return;
+        if (!lanePlayable(targetIndex, card, opening)) {
+            laneMode = 0;
+            actionMenuOpen = 1;
+            actionSelection = 0;
+            message = opening ? "INVALID OPENING" : "INVALID PLAY";
+            Pip.playSound("SCROLL");
+            drawGame();
+            return
+        }
+        laneMode = 0;
+        engine[5](playerCaravans, playerDirection, targetIndex, card);
+        targetIndex = 0;
+        playerHand.splice(handIndex, 1);
+        if (!opening) drawPlayerCard();
+        if (handIndex >= playerHand.length) handIndex = Math.max(0, playerHand.length - 1);
+        message = "CARD PLAYED";
+        afterMove(0)
+    }
+
+    function finishDisband() {
+        if (targetIndex < 0) return;
+        if (!playerCaravans[targetIndex].length) {
+            message = "EMPTY CARAVAN";
+            Pip.playSound("SCROLL");
+            redrawStatus();
+            return
+        }
+        laneMode = 0;
+        playerCaravans[targetIndex].splice(0, playerCaravans[targetIndex].length);
+        playerDirection[targetIndex] = 0;
+        targetIndex = 0;
+        message = "CARAVAN DISBANDED";
+        afterMove(1)
+    }
+
+    function onLaneKnob(direction) {
+        let previousTarget;
+        if (laneMode === 3) {
+            if (!direction) {
+                openTrackMenu();
+                return
+            }
+            previousTarget = targetIndex;
+            if (direction > 0) {
+                if (targetIndex < 2) {
+                    targetIndex++
+                } else {
+                    laneMode = 0;
+                    targetIndex = 0;
+                    handIndex = 0;
+                    message = "YOUR TURN";
+                    Pip.playSound("SCROLL");
+                    drawGame();
+                    return
+                }
+            } else if (targetIndex > 0) {
+                targetIndex--
+            } else {
+                return
+            }
+            syncRenderState();
+            Pip.playSound("SCROLL");
+            if (renderer) renderer[2](renderState, previousTarget);
+            else drawGame();
+            return
+        }
+        if (!direction) {
+            finishNumberPlay();
+            return
+        }
+        previousTarget = targetIndex;
+        const card = playerHand[handIndex],
+            opening = engine[1](playerCaravans),
+            step = direction > 0 ? 1 : -1;
+        let nextTarget = targetIndex + step;
+        while (nextTarget >= 0 && nextTarget < 3 && !lanePlayable(nextTarget, card, opening)) {
+            nextTarget += step
+        }
+        if (nextTarget < 0 || nextTarget > 2) {
+            cancelLaneTarget();
+            Pip.playSound("SCROLL");
+            return
+        }
+        targetIndex = nextTarget;
+        syncRenderState();
+        Pip.playSound("SCROLL");
+        if (renderer) renderer[2](renderState, previousTarget);
+        else drawGame()
+    }
+
     function confirmAction() {
         if (!actionMenuOpen) return;
+        if (actionMenuOpen === 2) {
+            if (actionSelection === 0) {
+                if (engine[1](playerCaravans)) {
+                    showInvalidOpening();
+                    return
+                }
+                actionMenuOpen = 0;
+                actionSelection = 0;
+                finishDisband();
+                return
+            }
+            Pip.playSound("SELECT");
+            closeActionMenu(1);
+            return
+        }
         if (actionSelection === 0) {
             playSelectedCard();
             return
@@ -349,10 +509,6 @@
             discardSelectedCard();
             return
         }
-        if (actionSelection === 2) {
-            disbandSelectedCaravan();
-            return
-        }
         Pip.playSound("SELECT");
         closeActionMenu(1)
     }
@@ -361,30 +517,15 @@
         const card = playerHand[handIndex];
         const opening = engine[1](playerCaravans);
         if (finished || cpuTurn || card === undefined) return 0;
-        if (opening) {
-            if (!engine[0](card) || playerCaravans[targetIndex].length) {
-                showInvalidOpening();
-                return 0
-            }
-        } else if (!engine[0](card)) {
+        if (opening && !engine[0](card)) {
+            showInvalidOpening();
+            return 0
+        }
+        if (!opening && !engine[0](card)) {
             startFaceTarget();
             return 2
         }
-        if (!engine[4](playerCaravans, playerDirection, targetIndex, card)) {
-            message = opening ? "INVALID OPENING" : "INVALID PLAY";
-            Pip.playSound("SCROLL");
-            redrawStatus();
-            return 0
-        }
-        actionMenuOpen = 0;
-        actionSelection = 0;
-        engine[5](playerCaravans, playerDirection, targetIndex, card);
-        playerHand.splice(handIndex, 1);
-        if (!opening) drawPlayerCard();
-        if (handIndex >= playerHand.length) handIndex = Math.max(0, playerHand.length - 1);
-        message = "CARD PLAYED";
-        afterMove(0);
-        return 1
+        return startLaneTarget() ? 2 : 0
     }
 
     function discardSelectedCard() {
@@ -393,26 +534,6 @@
         drawPlayerCard();
         if (handIndex >= playerHand.length) handIndex = Math.max(0, playerHand.length - 1);
         message = "CARD DISCARDED";
-        afterMove(1)
-    }
-
-    function disbandSelectedCaravan() {
-        if (finished || cpuTurn) return;
-        if (engine[1](playerCaravans)) {
-            showInvalidOpening();
-            return
-        }
-        if (!playerCaravans[targetIndex].length) {
-            message = "EMPTY CARAVAN";
-            Pip.playSound("SCROLL");
-            redrawStatus();
-            return
-        }
-        actionMenuOpen = 0;
-        actionSelection = 0;
-        playerCaravans[targetIndex].splice(0, playerCaravans[targetIndex].length);
-        playerDirection[targetIndex] = 0;
-        message = "CARAVAN DISBANDED";
         afterMove(1)
     }
 
@@ -433,7 +554,20 @@
         cpuTimer = 0;
         if (finished) return;
         const encodedMove = engine[12](cpuHand, cpuCaravans, cpuDirection, playerCaravans, playerDirection);
-        if (encodedMove < 0 || !cpuHand.length) {
+        if (encodedMove <= -2) {
+            const disbandLane = -encodedMove - 2;
+            if (disbandLane >= 0 && disbandLane < 3 && cpuCaravans[disbandLane].length) {
+                cpuCaravans[disbandLane].splice(0, cpuCaravans[disbandLane].length);
+                cpuDirection[disbandLane] = 0;
+                message = api[2] + " DISBANDED";
+                soundKind = 1
+            } else {
+                if (cpuHand.length) cpuHand.splice(0, 1);
+                drawCpuCard();
+                message = api[2] + " DISCARDED";
+                soundKind = 1
+            }
+        } else if (encodedMove < 0 || !cpuHand.length) {
             if (cpuHand.length) cpuHand.splice(0, 1);
             drawCpuCard();
             message = api[2] + " DISCARDED";
@@ -472,7 +606,33 @@
     }
 
     // --- Hardware input handlers ---
-    function onKnob1(direction) {
+    function scrollHand(direction) {
+        if (!direction || !playerHand.length) return;
+        if (direction < 0 && handIndex === 0) {
+            laneMode = 3;
+            targetIndex = 2;
+            message = "YOUR TURN";
+            Pip.playSound("SCROLL");
+            drawGame();
+            return
+        }
+        const previousHandIndex = handIndex;
+        if (direction > 0) {
+            if (handIndex >= playerHand.length - 1) return;
+            handIndex++
+        } else {
+            handIndex--
+        }
+        renderState[4] = handIndex;
+        Pip.playSound("SCROLL");
+        if (renderer) renderer[1](renderState, previousHandIndex)
+    }
+
+    function handleRightKnob(direction) {
+        if (direction) handleKnob(direction)
+    }
+
+    function handleKnob(direction) {
         if (!ready || finished || cpuTurn) return;
         if (faceMode) {
             onFaceKnob(direction);
@@ -483,50 +643,35 @@
                 confirmAction();
                 return
             }
-            const previousSelection = actionSelection;
+            const previousSelection = actionSelection,
+                maximumSelection = actionMenuOpen === 2 ? 1 : 2;
             actionSelection += direction > 0 ? 1 : -1;
-            if (actionSelection < 0) actionSelection = 3;
-            if (actionSelection > 3) actionSelection = 0;
+            if (actionSelection < 0) actionSelection = maximumSelection;
+            if (actionSelection > maximumSelection) actionSelection = 0;
             syncRenderState();
             Pip.playSound("SCROLL");
             if (renderer) renderer[4](renderState, 0, previousSelection);
             return
         }
-        if (direction) {
-            const previousTarget = targetIndex;
-            targetIndex += direction > 0 ? 1 : -1;
-            if (targetIndex < 0) targetIndex = 2;
-            if (targetIndex > 2) targetIndex = 0;
-            renderState[5] = targetIndex;
-            Pip.playSound("SCROLL");
-            if (renderer) renderer[2](renderState, previousTarget);
+        if (laneMode) {
+            onLaneKnob(direction);
             return
         }
-        openActionMenu()
-    }
-
-    function onKnob2(direction) {
-        if (!ready || finished || cpuTurn || faceMode || actionMenuOpen || !direction || !playerHand
-            .length) return;
-        const previousHandIndex = handIndex;
-        handIndex += direction > 0 ? 1 : -1;
-        if (handIndex < 0) handIndex = playerHand.length - 1;
-        if (handIndex >= playerHand.length) handIndex = 0;
-        renderState[4] = handIndex;
-        Pip.playSound("SCROLL");
-        if (renderer) renderer[1](renderState, previousHandIndex)
+        if (!direction) {
+            openActionMenu();
+            return
+        }
+        scrollHand(direction)
     }
 
     // --- Rematch reset and module loading ---
-    function restartGame(newOpponent) {
-        if (removed || !engine) return;
-        if (newOpponent) api[2] = newOpponent;
-        if (cpuTimer) clearTimeout(cpuTimer);
-        if (finishTimer) clearTimeout(finishTimer);
-        cpuTimer = finishTimer = 0;
-        ready = 0;
-        process.memory(true);
+    function bootMatch() {
+        bootTimer = 0;
+        if (removed) return;
         E.defrag();
+        if (!engine) engine = loadModule("CARAVAN_GAME_ENGINE.MIN.JS");
+        E.defrag();
+        if (!renderer) renderer = loadModule("CARAVAN_DRAW_SCREEN.MIN.JS", [fs, basePath]);
         playerDeck = engine[9](engine[8](0));
         cpuDeck = engine[9](engine[8](1));
         playerDeckPosition = cpuDeckPosition = 0;
@@ -536,18 +681,41 @@
         cpuCaravans = [[], [], []];
         playerDirection = new Int8Array(3);
         cpuDirection = new Int8Array(3);
-        handIndex = targetIndex = cpuTurn = turnCount = finished = actionMenuOpen = actionSelection = 0;
+        handIndex = targetIndex = cpuTurn = turnCount = finished = actionMenuOpen = actionSelection = laneMode = 0;
         clearFaceTarget();
-        message = "OPENING - YOUR TURN";
         dealStartingHands();
+        message = "OPENING - YOUR TURN";
         renderState = createRenderState();
         drawGame();
         h.flip();
         Pip.lastFlip = getTime();
         process.memory(true);
+        E.defrag();
+        gameNumber++;
+        if (!audio) audio = loadModule("CARAVAN_GAME_AUDIO.MIN.JS", [fs, basePath]);
+        logEvent("AUDIOCORE");
         if (audio) audio[0]();
+        logEvent("AUDIOACTIVE");
+        // The controller already owns these handlers, so avoid eval-loading a
+        // separate controls wrapper every match. onExclusive replaces any stale
+        // empty listener entries left by the prior Results screen.
+        Pip.onExclusive("knob1", handleKnob);
+        Pip.onExclusive("knob2", handleRightKnob);
+        inputAttached = 1;
         ready = 1;
-        attachInput();
+        logEvent("READY")
+    }
+
+    function restartGame(newOpponent) {
+        if (removed || bootTimer) return;
+        if (newOpponent) api[2] = newOpponent;
+        if (cpuTimer) clearTimeout(cpuTimer);
+        if (finishTimer) clearTimeout(finishTimer);
+        cpuTimer = finishTimer = 0;
+        ready = 0;
+        logEvent("REMATCH");
+        process.memory(true);
+        bootTimer = setTimeout(bootMatch, 1)
     }
 
     function loadModule(fileName, moduleArguments) {
@@ -558,6 +726,24 @@
         moduleFactory = 0;
         process.memory(true);
         return moduleObject
+    }
+
+    // --- Menu suspension ---
+    function suspendForMenu() {
+        if (removed) return;
+        ready = 0;
+        detachInput();
+        // Keep Engine + the small idled Audio controller resident across the
+        // post-game menu. Hardware isolation showed the fixed ~106-block loss
+        // remained when Renderer stayed resident but Engine was re-evaluated,
+        // identifying the Engine reload cycle as the remaining leak. Renderer
+        // is much larger and safe to release here, which still leaves the
+        // compact return menu plenty of headroom.
+        if (renderer) renderer[6]();
+        renderer = 0;
+        process.memory(true);
+        E.defrag();
+        logEvent("MENUSUSPEND")
     }
 
     // --- Final cleanup ---
@@ -575,34 +761,12 @@
         if (renderer) renderer[6]();
         renderer = 0;
         engine = 0;
-        playerDeck = 0;
-        cpuDeck = 0;
-        playerHand = [];
-        cpuHand = [];
-        playerCaravans = [[], [], []];
-        cpuCaravans = [[], [], []]
+        renderState = 0;
+        message = 0;
+        playerDeck = cpuDeck = playerHand = cpuHand = playerCaravans = cpuCaravans = playerDirection = cpuDirection = 0;
+        api[3] = 0;
+        process.memory(true)
     }
-    bootTimer = setTimeout(function () {
-        bootTimer = 0;
-        if (removed) return;
-        E.defrag();
-        engine = loadModule("CARAVAN_GAME_ENGINE.MIN.JS");
-        E.defrag();
-        renderer = loadModule("CARAVAN_DRAW_SCREEN.MIN.JS", [fs, basePath]);
-        playerDeck = engine[9](engine[8](0));
-        cpuDeck = engine[9](engine[8](1));
-        dealStartingHands();
-        message = "OPENING - YOUR TURN";
-        renderState = createRenderState();
-        drawGame();
-        h.flip();
-        Pip.lastFlip = getTime();
-        process.memory(true);
-        E.defrag();
-        audio = loadModule("CARAVAN_GAME_AUDIO.MIN.JS", [fs, basePath]);
-        if (audio) audio[0]();
-        ready = 1;
-        attachInput();
-    }, 1);
-    return [removeGame, restartGame]
+    bootTimer = setTimeout(bootMatch, 1);
+    return [removeGame, restartGame, suspendForMenu]
 })

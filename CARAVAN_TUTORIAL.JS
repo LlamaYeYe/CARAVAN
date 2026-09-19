@@ -11,6 +11,7 @@
         handIndex = 0,
         actionSelection = 0,
         actionMenuOpen = 0,
+        laneMode = 0,
         removed = 0,
         knob1Attached = 0,
         knob2Attached = 0,
@@ -86,7 +87,8 @@
         state[8] = actionSelection;
         state[13] = totalCards;
         state[2] = playerCaravans;
-        state[3] = cpuCaravans
+        state[3] = cpuCaravans;
+        state[16] = laneMode ? laneMode : step === 1 ? 1 : step === 11 ? 3 : 0
     }
 
     function drawBase() {
@@ -98,20 +100,21 @@
         if (step === 0) {
             hintBox(66, 58, 348, 126, ["Start with 8 cards.", "All 3 caravans start empty.",
                 "Opening: play A-10 once",
-                "into EACH empty caravan.", "Press L1 to continue."])
+                "into EACH empty caravan.", "Press LEFT wheel."])
         } else if (step === 1) {
-            isolatedHintBox(258, 217, 198, 84, ["Turn LEFT WHEEL", "to choose an EMPTY caravan.",
-                "Press L1 to continue."])
+            isolatedHintBox(258, 217, 198, 84, ["Turn EITHER WHEEL", "after choosing Play Card.",
+                "Select an EMPTY caravan.", "LEFT press places it."])
         } else if (step === 2) {
-            hintBox(12, 54, 230, 100, ["Turn RIGHT WHEEL", "to scroll YOUR HAND.", "You begin with 8 cards.",
-                "Press L1 to continue."])
+            hintBox(12, 48, 300, 126, ["CURRENT SCROLLING", "Turn EITHER wheel through hand.",
+                "All 8 cards scroll on screen.", "From card 1, turn LEFT -> tracks.",
+                "Past right track -> cards again."])
         } else if (step === 3) {
             isolatedHintBox(82, 88, 316, 108, ["OPENING RULE", "Only A-10 may be played.",
                 "One card per caravan first.",
                 "Occupied opening lane = INVALID.", "Discard/redraw IS allowed."])
         } else if (step === 4) {
             cardHintBox(41, 224, 96, ["ACE", "Ace is worth 1 point.", "It counts as a number card.",
-                "Press L1 to continue."])
+                "Press LEFT wheel."])
         } else if (step === 5) {
             cardHintBox(132, 214, 96, ["KING", "Attach to any number card.", "It doubles that card's value.",
                 "Can target either board."])
@@ -125,39 +128,45 @@
             cardHintBox(405, 228, 96, ["JOKER", "On Ace: removes its suit.", "On 2-10: removes that rank.",
                 "Can target either board."])
         } else if (step === 9) {
-            hintBox(84, 214, 312, 96, ["Turn LEFT WHEEL", "to move the action highlight.",
-                "Choose Play Card.",
-                "Press L1 to continue."])
+            hintBox(84, 214, 312, 96, ["CARD ACTION", "Turn EITHER WHEEL.", "Choose Play Card.",
+                "LEFT press confirms."])
         } else if (step === 10) {
-            isolatedHintBox(90, 211, 300, 88, ["Turn LEFT WHEEL.", "Choose Discard Card.",
-                "Opening discard/redraw is allowed.",
-                "Discard ends your turn."])
+            isolatedHintBox(90, 211, 300, 88, ["CARD ACTION", "Choose Discard Card.", "Or choose Cancel.",
+                "LEFT press confirms."])
         } else if (step === 11) {
-            isolatedHintBox(70, 197, 340, 104, ["DISBAND CARAVAN", "Select a caravan first.",
-                "Choose Disband Caravan.", "Removes ALL cards; no draw.",
-                "Ends turn. After opening only."])
+            isolatedHintBox(70, 197, 340, 104, ["TRACK ACTION", "Card 1 + LEFT enters tracks.",
+                "Scroll all 3 caravan tracks.", "LEFT press: Disband / Cancel.",
+                "Right past track 3 returns to hand."])
         } else if (step === 12) {
             hintBox(62, 58, 356, 126, ["FACE CARD TARGETING", "Play Card -> choose YOUR or",
                 "RINGO board from the popup.",
-                "Then scroll highlighted cards.", "Press L1 to place the face card."])
+                "EITHER wheel scrolls targets.", "LEFT press places the face card."])
         } else if (step === 13) {
             hintBox(74, 64, 332, 116, ["21-26 means SOLD.", "Higher sold total wins lane.",
                 "Win at least 2 of 3.",
-                "Press L1 to continue."])
+                "Press LEFT wheel."])
         } else if (step === 14) {
             hintBox(66, 70, 348, 108, ["DECK EXHAUSTION", "If your deck AND hand are empty,",
                 "you lose unless that last move", "already won the match.",
-                "Press L1 to continue."])
+                "Press LEFT wheel."])
+        } else if (step === 15) {
+            hintBox(48, 52, 384, 140, ["CURRENT END FLOW", "Bet: Auto-Match / Raise / Accept / Exit.",
+                "Win: music -> Game Over Win -> Results.", "Cap number moves with cap audio.",
+                "Press LEFT wheel."])
+        } else if (step === 16) {
+            hintBox(34, 48, 412, 152, ["ZERO-CAP STATES", "You at 0: Not enough caps...CLICK HERE!",
+                "Opponent at 0: Oops! You have won", "to much! GET OUT! -> Caravan menu.",
+                "Next Play: Opponent has no caps...", "CLICK HERE! resets Total Ante."])
         } else {
-            hintBox(74, 74, 332, 108, ["Demo complete.", "The real game uses this layout.",
-                "Deals are randomized.",
-                "Press L1 to return."])
+            hintBox(74, 74, 332, 108, ["Demo complete.", "Current scrolling and Results shown.",
+                "Deals are randomized.", "Press LEFT wheel to return."])
         }
     }
 
     // --- Tutorial step progression ---
     function prepareStep() {
         state[15] = 0;
+        laneMode = step === 11 ? 3 : 0;
         if (step === 0) {
             playerCaravans = [[], [], []];
             cpuCaravans = [[], [], []];
@@ -253,8 +262,10 @@
 
     function nextStep() {
         step++;
-        actionMenuOpen = step === 9 || step === 10 || step === 11;
-        actionSelection = step === 9 ? 3 : step === 10 ? 0 : step === 11 ? 1 : 0;
+        actionMenuOpen = step === 9 || step === 10;
+        actionSelection = step === 9 ? 0 : step === 10 ? 1 : 0;
+        laneMode = step === 11 ? 3 : 0;
+        if (step === 11) targetIndex = 1;
         scheduleDrawStep(0)
     }
 
@@ -262,19 +273,48 @@
     function onKnob1(direction) {
         if (renderBusy) return;
         if (direction) {
-            if (step === 1) {
+            if (step === 1 || step === 11) {
                 const previous = targetIndex;
                 targetIndex += direction > 0 ? 1 : -1;
-                if (targetIndex < 0) targetIndex = 2;
-                if (targetIndex > 2) targetIndex = 0;
+                if (targetIndex < 0) targetIndex = 0;
+                if (targetIndex > 2) targetIndex = 2;
                 state[5] = targetIndex;
                 Pip.playSound("SCROLL");
                 renderer[2](state, previous)
-            } else if (step === 9 || step === 10 || step === 11) {
+            } else if (step === 2) {
+                const previousHandIndex = handIndex,
+                    previousTargetIndex = targetIndex,
+                    previousLaneMode = laneMode;
+                if (laneMode === 3) {
+                    if (direction > 0 && targetIndex === 2) {
+                        laneMode = 0;
+                        handIndex = 0
+                    } else if (direction > 0) targetIndex++;
+                    else if (targetIndex > 0) targetIndex--
+                } else if (direction < 0 && handIndex === 0) {
+                    laneMode = 3;
+                    targetIndex = 2
+                } else {
+                    handIndex += direction > 0 ? 1 : -1;
+                    if (handIndex < 0) handIndex = 0;
+                    if (handIndex >= playerHand.length) handIndex = playerHand.length - 1
+                }
+                Pip.playSound("SCROLL");
+                syncState();
+                if (previousLaneMode !== laneMode) {
+                    drawBase();
+                    drawHint()
+                } else if (laneMode === 3) {
+                    renderer[2](state, previousTargetIndex);
+                    drawHint()
+                } else {
+                    renderer[1](state, previousHandIndex)
+                }
+            } else if (step === 9 || step === 10) {
                 const previous = actionSelection;
                 actionSelection += direction > 0 ? 1 : -1;
-                if (actionSelection < 0) actionSelection = 3;
-                if (actionSelection > 3) actionSelection = 0;
+                if (actionSelection < 0) actionSelection = 2;
+                if (actionSelection > 2) actionSelection = 0;
                 state[8] = actionSelection;
                 Pip.playSound("SCROLL");
                 renderer[4](state, 0, previous)
@@ -282,31 +322,18 @@
             return
         }
         Pip.playSound("SELECT");
-        if (step >= 0 && step <= 8 || step >= 12 && step <= 14) {
+        if (step >= 0 && step <= 8 || step >= 11 && step <= 16) {
             nextStep();
             return
         }
         if (step === 9) {
             if (actionSelection !== 0) return;
-            actionMenuOpen = 1;
-            actionSelection = 0;
-            step = 10;
-            scheduleDrawStep(0);
+            nextStep();
             return
         }
         if (step === 10) {
             if (actionSelection !== 1) return;
-            actionMenuOpen = 1;
-            actionSelection = 1;
-            step = 11;
-            scheduleDrawStep(0);
-            return
-        }
-        if (step === 11) {
-            if (actionSelection !== 2) return;
-            actionMenuOpen = 0;
-            step = 12;
-            scheduleDrawStep(0);
+            nextStep();
             return
         }
         detach();
@@ -316,18 +343,7 @@
     }
 
     function onKnob2(direction) {
-        let previous;
-        if (renderBusy || !direction) return;
-        if (step === 2) {
-            previous = handIndex;
-            handIndex += direction > 0 ? 1 : -1;
-            if (handIndex < 0) handIndex = playerHand.length - 1;
-            if (handIndex >= playerHand.length) handIndex = 0;
-            state[4] = handIndex;
-            Pip.playSound("SCROLL");
-            renderer[1](state, previous);
-            return
-        }
+        if (direction) onKnob1(direction)
     }
 
     // --- Final cleanup ---

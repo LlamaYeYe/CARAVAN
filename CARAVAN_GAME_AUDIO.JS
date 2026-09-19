@@ -129,10 +129,8 @@
         loadConfig();
         allocateBuffer();
         openBank();
-        try {
-            Pip.audioStop()
-        } catch (error) {
-        }
+        // Pip.audioStart() replaces the active file stream itself. Do not reset the
+        // codec immediately before starting the 16 kHz music stream.
         if (musicEnabled()) {
             try {
                 Pip.audioStart(basePath + "LAZY_DAYZ-TIRED.WAV", {
@@ -170,7 +168,11 @@
         if (!fillSound(kind, level)) return;
         pendingKind = kind;
         if (playTimer) clearTimeout(playTimer);
-        submitSound()
+        // Keep the card sound clear of the short firmware SCROLL/SELECT cue that
+        // may have just been mixed by the controls. Both streams are 16 kHz, but
+        // starting two overlap streams on the same instant can change perceived
+        // level/tone on the hardware mixer.
+        playTimer = setTimeout(submitSound, 90)
     }
 
     function idle() {
@@ -187,8 +189,7 @@
         soundBuffer = discardView = 0;
         bufferAddress = 0;
         loadedKind = -1;
-        loadedLevel = 0;
-        process.memory(true)
+        loadedLevel = 0
     }
 
     // --- Final cleanup ---

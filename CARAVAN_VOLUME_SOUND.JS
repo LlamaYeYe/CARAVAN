@@ -6,10 +6,10 @@
 (function (api) {
     const fs = api.fs,
         basePath = api.basePath;
-    let soundConfig = [1, 15, 1, 15, 1, 15, 1, 15],
-        enableIndexByKind = [0, 2, 4, 6],
-        volumeIndexByKind = [1, 3, 5, 7],
-        titles = ["PLAYING CARD SOUND", "DISCARD SOUND", "BOTTLE CAP", "Lazy Day - Tired"],
+    let soundConfig = [1, 15, 1, 15, 1, 15, 1, 15, 1, 15],
+        enableIndexByKind = [0, 2, 4, 8, 6],
+        volumeIndexByKind = [1, 3, 5, 9, 7],
+        titles = ["PLAYING CARD SOUND", "DISCARD SOUND", "BOTTLE CAP", "GAME OVER WIN", "Lazy Day - Tired"],
         detailScreen = 0,
         selectedRow = 0,
         soundKind = 0,
@@ -46,8 +46,12 @@
                 if (isNaN(appliedMusicLevel) || appliedMusicLevel < 1
                     || appliedMusicLevel > 15) appliedMusicLevel = 15
             }
+            if (configText.length >= 11) {
+                soundConfig[8] = configText.charAt(9) === "0" ? 0 : 1;
+                soundConfig[9] = parseInt(configText.charAt(10), 16)
+            }
         }
-        for (const volumeIndex of [1, 3, 5, 7]) {
+        for (const volumeIndex of [1, 3, 5, 7, 9]) {
             if (isNaN(soundConfig[volumeIndex]) || soundConfig[volumeIndex] < 0
                 || soundConfig[volumeIndex] > 15) {
                 soundConfig[volumeIndex] = 15
@@ -64,7 +68,8 @@
             fs.writeFileSync(basePath + "VOLUME_SOUND.CFG",
                 "" + soundConfig[0] + toHexDigit(soundConfig[1]) + soundConfig[2]
                     + toHexDigit(soundConfig[3]) + soundConfig[4] + toHexDigit(soundConfig[5])
-                    + soundConfig[6] + toHexDigit(soundConfig[7]) + toHexDigit(appliedMusicLevel))
+                    + soundConfig[6] + toHexDigit(soundConfig[7]) + toHexDigit(appliedMusicLevel)
+                    + soundConfig[8] + toHexDigit(soundConfig[9]))
         } catch (error) {
         }
     }
@@ -170,24 +175,25 @@
     }
 
     function drawList() {
-        if (selectedRow < 0 || selectedRow > 4) selectedRow = 0;
+        if (selectedRow < 0 || selectedRow > 5) selectedRow = 0;
         drawHeader();
         h.drawString("SOUND EFFECTS - Will Be Applied In-Game", 42, 44)
-            .drawLine(42, 68, 438, 68);
-        drawRow("Playing Card", 76, selectedRow === 0);
-        drawRow("Discard", 104, selectedRow === 1);
-        drawRow("Bottle Cap", 132, selectedRow === 2);
-        h.drawString("BACKGROUND MUSIC - Will Be Applied In-Game", 42, 168)
-            .drawLine(42, 192, 438, 192);
-        drawRow("Lazy Day - Tired", 200, selectedRow === 3);
-        drawRow("< Back", 238, selectedRow === 4)
+            .drawLine(42, 66, 438, 66);
+        drawRow("Playing Card", 72, selectedRow === 0);
+        drawRow("Discard", 100, selectedRow === 1);
+        drawRow("Bottle Cap", 128, selectedRow === 2);
+        drawRow("Game Over Win", 156, selectedRow === 3);
+        h.drawString("BACKGROUND MUSIC - Will Be Applied In-Game", 42, 186)
+            .drawLine(42, 208, 438, 208);
+        drawRow("Lazy Day - Tired", 216, selectedRow === 4);
+        drawRow("< Back", 252, selectedRow === 5)
     }
 
     function drawDetail() {
         if (selectedRow < 0 || selectedRow > 3) selectedRow = 0;
         drawHeader();
         h.drawString(titles[soundKind], 42, 54).drawLine(42, 80, 438, 80);
-        drawRow((soundKind === 3 ? "Music: " : "Sound: ") + (enabled() ? "ON" : "OFF"), 96,
+        drawRow((soundKind === 4 ? "Music: " : "Sound: ") + (enabled() ? "ON" : "OFF"), 96,
             selectedRow === 0);
         const volumeText = editingVolume ? "Volume: < " + volume() + " >" : "Volume: " + volume();
         drawRow(volumeText, 134, selectedRow === 1);
@@ -196,7 +202,8 @@
         drawRow(previewText, 172, selectedRow === 2);
         drawRow("< Back", 210, selectedRow === 3);
         const footerText = editingVolume ? "Turn left wheel to adjust. Press to finish."
-            : soundKind === 3 ? "Music by Geoff Harvey from Pixabay" : soundKind === 2
+            : soundKind === 4 ? "Music by Geoff Harvey from Pixabay" : soundKind === 3
+            ? "Sound Distributed From Wand Company MK V (TV Series) PIP-BOY" : soundKind === 2
             ? "Sound Distributed From Wand Company PIP-BOY 3000" : "Sound Effect by Alex from Pixabay";
         h.setFont("6x8", 1).drawString(footerText, 42, 258).setFontMonofonto16()
     }
@@ -262,8 +269,24 @@
     function runPreviewStart() {
         previewStartTimer = 0;
         if (removed || !previewWaiting) return;
-        if (soundKind < 3) {
+        if (soundKind < 2) {
             if (!getSfxEngine() || !sfxEngine.startPreview(soundKind, volume(), previewStarted,
+                previewDone)) {
+                previewWaiting = 0;
+                drawDetail()
+            }
+            return
+        }
+        if (soundKind === 2) {
+            if (!getMusicPreview() || !musicPreview.start("BOTTLE_CAP_PREVIEW.WAV", volume(), previewStarted,
+                previewDone)) {
+                previewWaiting = 0;
+                drawDetail()
+            }
+            return
+        }
+        if (soundKind === 3) {
+            if (!getMusicPreview() || !musicPreview.start("GAME_OVER_WIN.WAV", volume(), previewStarted,
                 previewDone)) {
                 previewWaiting = 0;
                 drawDetail()
@@ -347,7 +370,7 @@
                     .isActive()) || (musicPreview
                 .isWaiting && musicPreview.isWaiting())));
             if (stoppedPreview) stopPreview();
-            const maximumRow = detailScreen ? 3 : 4;
+            const maximumRow = detailScreen ? 3 : 5;
             selectedRow += direction > 0 ? 1 : -1;
             if (selectedRow < 0) selectedRow = maximumRow;
             if (selectedRow > maximumRow) selectedRow = 0;
@@ -366,7 +389,7 @@
             Pip.playSound("SELECT")
         }
         if (!detailScreen) {
-            if (selectedRow === 4) {
+            if (selectedRow === 5) {
                 goBack();
                 return
             }

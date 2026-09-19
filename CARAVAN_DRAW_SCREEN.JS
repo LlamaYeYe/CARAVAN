@@ -154,7 +154,7 @@
                 x,
                 223,
                 1,
-                cardIndex === state[4]);
+                cardIndex === state[4] && state[16] !== 3);
             x += 91
         }
     }
@@ -205,7 +205,7 @@
             x = laneX[previous];
             box(x - 3, 139, x + 135, 214, 1)
         }
-        if (state[5] >= 0 && state[5] < 3) {
+        if (state[16] && state[5] >= 0 && state[5] < 3) {
             x = laneX[state[5]];
             box(x - 3, 139, x + 135, 214, 0)
         }
@@ -221,23 +221,33 @@
     }
 
     function popup(state, face, previous) {
+        const trackMenu = !face && state[7] === 2;
+        function label(row) {
+            if (face) return row === 0 ? "Player Board" : row === 1 ? "Opponent Board" : "Back";
+            if (trackMenu) return row === 0 ? "Disband Caravan" : "Cancel";
+            return row === 0 ? "Play Card" : row === 1 ? "Discard Card" : "Cancel"
+        }
         if (previous !== undefined) {
-            actionRow(face ? previous === 0 ? "Player Board" : previous === 1 ? "Opponent Board" : "Back"
-                : previous === 0 ? "Play Card" : previous === 1 ? "Discard Card" : previous === 2
-                ? "Disband Caravan" : "Back", previous, 0);
-            actionRow(face ? state[8] === 0 ? "Player Board" : state[8] === 1 ? "Opponent Board" : "Back"
-                : state[8] === 0 ? "Play Card" : state[8] === 1 ? "Discard Card" : state[8] === 2
-                ? "Disband Caravan" : "Back", state[8], 1);
+            actionRow(label(previous), previous, 0);
+            actionRow(label(state[8]), state[8], 1);
             return
         }
         h.setColor(0).fillRect(122, 70, 358, 208).setColor(3).drawRect(122, 70, 358, 208)
             .drawRect(124, 72, 356, 206)
             .setFontAlign(0, -1);
-        spacedBold(face ? "TARGET BOARD" : "CARD ACTION", 240, 80, 1, 0);
-        actionRow(face ? "Player Board" : "Play Card", 0, state[8] === 0);
-        actionRow(face ? "Opponent Board" : "Discard Card", 1, state[8] === 1);
-        if (!face) actionRow("Disband Caravan", 2, state[8] === 2);
-        actionRow("Back", face ? 2 : 3, state[8] === (face ? 2 : 3))
+        spacedBold(face ? "TARGET BOARD" : trackMenu ? "TRACK ACTION" : "CARD ACTION", 240, 80, 1, 0);
+        if (face) {
+            actionRow("Player Board", 0, state[8] === 0);
+            actionRow("Opponent Board", 1, state[8] === 1);
+            actionRow("Back", 2, state[8] === 2)
+        } else if (trackMenu) {
+            actionRow("Disband Caravan", 0, state[8] === 0);
+            actionRow("Cancel", 1, state[8] === 1)
+        } else {
+            actionRow("Play Card", 0, state[8] === 0);
+            actionRow("Discard Card", 1, state[8] === 1);
+            actionRow("Cancel", 2, state[8] === 2)
+        }
     }
 
     function redrawFaceTargetSelection(state, previousLane) {
@@ -273,11 +283,18 @@
         spacedBold("HAND", 240, 285, 1, 0);
         handScroller(state);
         spacedBold("Total Cards = " + state[13], 456, 286, 1, 1);
-        if (state[7] || state[9] === 1) spacedBold("L1 Scroll/Select", 22, 300, 1, -1);
-        else if (state[9] === 2) spacedBold("L1 Scroll/Place", 22, 300, 1, -1);
-        else {
-            spacedBold("L1 caravan/play", 22, 300, 1, -1);
-            spacedBold("R1 Scroll Cards", 456, 300, 1, 1)
+        if (state[16] === 3) {
+            spacedBold("L/R Scroll Tracks", 22, 300, 1, -1);
+            spacedBold("Left Press Actions", 456, 300, 1, 1)
+        } else if (state[16] === 1 || state[9] === 2) {
+            spacedBold("L/R Target / Edge Back", 22, 300, 1, -1);
+            spacedBold("Left Press Place", 456, 300, 1, 1)
+        } else if (state[7] || state[9] === 1) {
+            spacedBold("L/R Scroll Menu", 22, 300, 1, -1);
+            spacedBold("Left Press Select", 456, 300, 1, 1)
+        } else {
+            spacedBold("L/R Scroll Cards", 22, 300, 1, -1);
+            spacedBold("Left Press Actions", 456, 300, 1, 1)
         }
     }
 
@@ -297,7 +314,7 @@
                 0,
                 state[9] === 2 && state[10] === 1 && laneIndex === state[11] ? state[12] : -1);
             caravan(state[2][laneIndex], state[3][laneIndex], laneX[laneIndex], 142, !state[6]
-                && !state[9] && laneIndex === state[5], state[9] === 2 && state[10] === 0
+                && !state[9] && state[16] && laneIndex === state[5], state[9] === 2 && state[10] === 0
                 && laneIndex === state[11] ? state[12] : -1)
         }
         hand(state);

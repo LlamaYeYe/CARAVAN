@@ -67,7 +67,7 @@
             if (ok) {
                 try {
                     fs.writeFileSync(basePath + "VOLUME_SOUND.CFG", config.substr(0, 8) + "0123456789ABCDEF"
-                        .charAt(target))
+                        .charAt(target) + (config.length > 9 ? config.substr(9) : ""))
                 } catch (writeError) {
                     ok = 0
                 }

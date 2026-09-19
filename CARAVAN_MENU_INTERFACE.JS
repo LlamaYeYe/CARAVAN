@@ -1,6 +1,6 @@
 /*
  * CARAVAN - CARAVAN_MENU_INTERFACE.JS
- * Main menus, submenus, results handoff, demo launch, and loading UI.
+ * Main menus, submenus, demo launch, and loading UI. Results are handled lazily by APP.JS.
  * Readable source only; installed runtime remains in the matching minified file.
  */
 (function (api) {
@@ -18,17 +18,10 @@
         opponentFunds = api.opponentFunds === undefined ? 500 : api.opponentFunds,
         opponent = api.opponent || pickOpponent(),
         demoModule = 0,
-        resultsModule = 0,
         soundModule = 0,
-        resultsStartTimer = 0,
         knob1Attached = 0,
         knob2Attached = 0,
-        removed = 0,
-        resultOutcome = api.resultOutcome || "DRAW",
-        resultDelta = api.resultDelta || 0,
-        resultReady = 0,
-        loadTimer = 0,
-        loadPhase = 0;
+        removed = 0;
 
     // --- Drawing primitives and menu screens ---
     function drawHeader(title) {
@@ -37,7 +30,6 @@
     }
 
     function menuRowY(row) {
-        if (screen === 3) return 244 + (row - 2) * 36;
         return (screen === 0 ? 116 : 92) + row * 36
     }
 
@@ -64,7 +56,7 @@
     }
 
     function drawBetMenu() {
-        if (funds < 10) {
+        if (funds < 10 || opponentFunds < 10) {
             ante = 0;
             menuSelection = 0
         } else if (menuSelection < 0 || menuSelection > 3) menuSelection = 0;
@@ -74,6 +66,10 @@
             .drawString("Your Total Funds: " + funds, 38, 112);
         if (funds < 10) {
             drawMenuRow("Not enough bottle caps to play...CLICK HERE!", 3, 1);
+            return
+        }
+        if (opponentFunds < 10) {
+            drawMenuRow("Opponent has no bottle caps...CLICK HERE!", 3, 1);
             return
         }
         drawMenuRow("Auto-Match", 2, menuSelection === 0);
@@ -104,84 +100,27 @@
 
     function drawRules() {
         drawHeader("CARAVAN - CONTROLS");
-        h.setFont("6x8", 1).drawString("LEFT WHEEL", 30, 48)
-            .drawString("Turn: caravan / action / face target", 46, 61)
-            .drawString("Press: open / confirm selection", 46, 73).drawString("RIGHT WHEEL", 30, 91)
-            .drawString("Turn only: scroll cards in hand", 46, 104).drawString("OPENING", 30, 122)
-            .drawString("Start with 8 cards. First 3 plays use A-10.", 46, 135)
-                .drawString("Put one card in EACH empty caravan first.", 46, 147)
-            .drawString("Same opening caravan again = INVALID.", 46, 159)
-                .drawString("Discard/redraw IS allowed during opening.", 46, 171)
-            .drawString("ACTIONS", 30, 189)
-                .drawString("Disband removes selected caravan; ends turn.", 46, 202)
-            .drawString("Face cards: Board -> Caravan -> numbered card.", 46, 214)
-                .drawString("21-26; win 2 of 3. Empty deck+hand = loss.", 46, 232);
+        h.setFont("6x8", 1).drawString("BOTH WHEELS", 30, 46)
+            .drawString("Turn either wheel to move selection.", 46, 59)
+            .drawString("Cards, tracks, menus and targets all scroll.", 46, 71)
+            .drawString("LEFT WHEEL PRESS", 30, 89)
+            .drawString("Press to open or confirm an action.", 46, 102)
+            .drawString("NORMAL PLAY", 30, 120)
+            .drawString("Scroll LEFT past first card -> caravan tracks.", 46, 133)
+            .drawString("Click card: Play / Discard / Cancel.", 46, 145)
+            .drawString("Click track: Disband Caravan / Cancel.", 46, 157)
+            .drawString("PLAY CARD", 30, 175)
+            .drawString("Play: scroll track; LEFT place; edge = Back.", 46, 188)
+            .drawString("FACE CARDS", 30, 206)
+            .drawString("Choose board, scroll target, LEFT press.", 46, 219)
+            .drawString("21-26; win 2 of 3. Empty deck+hand = loss.", 46, 237);
         drawMenuRow("< Back", 5, 1)
-    }
-
-    function drawResultFallback() {
-        h.setColor(3).setFont("6x8", 2).setFontAlign(0, -1);
-        if (resultOutcome === "PLAYER") {
-            h.drawString("YOU WIN", 240, 56).drawString("YOU WIN", 241, 56)
-        } else if (resultOutcome === "CPU") {
-            h.drawString(opponent + " WINS", 240, 46).drawString(opponent + " WINS", 241, 46)
-                .drawString("YOU LOSE", 240, 66)
-                .drawString("YOU LOSE", 241, 66)
-        } else {
-            h.drawString("DRAW", 240, 56).drawString("DRAW", 241, 56)
-        }
-        h.setFontAlign(-1, -1)
-    }
-
-    function drawStaticResult() {
-        let image = 0,
-            graphicsFile = 0,
-            capOffset = resultOutcome === "PLAYER" ? 2140 : resultOutcome === "CPU" ? 4280 : 0,
-            amount = Math.abs(resultDelta),
-            counter = !amount ? "0" : resultDelta < 0 ? "-" + amount : "+" + amount;
-        try {
-            graphicsFile = E.openFile(appPath + "CARAVAN_RESULT_CAPS.BIN", "r");
-            if (graphicsFile) {
-                graphicsFile.seek(capOffset);
-                image = graphicsFile.read(2140);
-                if (graphicsFile.close) graphicsFile.close();
-                graphicsFile = 0
-            }
-            if (image) h.setColor(3).drawImage(image, 148, 100, {
-                scale: 1.125
-            })
-        } catch (error) {
-            try {
-                if (graphicsFile && graphicsFile.close) graphicsFile.close()
-            } catch (closeError) {
-            }
-        }
-        graphicsFile = 0;
-        image = 0;
-        h.setColor(3).setFont("6x8", 2).setFontAlign(0, -1).drawString(counter, 305, 122)
-            .drawString(counter, 306, 122)
-            .drawString("CAPS", 305, 162).drawString("CAPS", 306, 162).setFontAlign(-1, -1)
-    }
-
-    function drawResults() {
-        if (funds < 10) menuSelection = 0;
-        else if (menuSelection < 0 || menuSelection > 1) menuSelection = 0;
-        drawHeader("CARAVAN - RESULTS");
-        drawResultFallback();
-        if (resultReady) drawStaticResult();
-        if (funds < 10) {
-            drawMenuRow("Not enough bottle caps to play...EXIT GAME!", 2, 1);
-            return
-        }
-        drawMenuRow("Rematch", 2, menuSelection === 0);
-        drawMenuRow("< Back", 3, menuSelection === 1)
     }
 
     function menuRowForSelection(selection) {
         if (screen === 0) return selection;
         if (screen === 1) return selection + 2;
         if (screen === 2) return selection + 3;
-        if (screen === 3) return selection + 2;
         return 5
     }
 
@@ -189,11 +128,11 @@
         if (screen === 0) return selection === 0 ? "Play Caravan" : selection === 1
             ? "Demo / Tutorial" : selection === 2 ? "Rules / Controls" : selection === 3
             ? "Volume Adjustment" : "< Back";
-        if (screen === 1) return selection === 0 ? "Auto-Match" : selection === 1 ? "Raise"
+        if (screen === 1) return funds < 10 ? "Not enough bottle caps to play...CLICK HERE!"
+            : opponentFunds < 10 ? "Opponent has no bottle caps...CLICK HERE!"
+            : selection === 0 ? "Auto-Match" : selection === 1 ? "Raise"
             : selection === 2 ? "Accept" : "Exit";
         if (screen === 2) return selection === 0 ? "Play Caravan" : "< Back";
-        if (screen === 3) return funds < 10 ? "Not enough bottle caps to play...EXIT GAME!"
-            : selection === 0 ? "Rematch" : "< Back";
         return "< Back"
     }
 
@@ -220,45 +159,22 @@
         if (screen === 0) drawMainMenu();
         else if (screen === 1) drawBetMenu();
         else if (screen === 2) drawDeckMenu();
-        else if (screen === 3) drawResults();
         else if (screen === 5) drawResetPopup();
         else drawRules()
     }
 
     // --- Game-loading handoff ---
-    function drawLoad(label) {
-        const dots = loadPhase === 0 ? "." : loadPhase === 1 ? ".." : "...";
-        h.clear().setColor(3).setFontMonofonto16().setFontAlign(0, -1).drawString(label + dots, 240, 146)
-            .setFontAlign(-1, -1);
-        h.flip();
-        Pip.lastFlip = getTime()
-    }
-
-    function stopLoad() {
-        if (loadTimer) {
-            clearTimeout(loadTimer);
-            loadTimer = 0
-        }
-    }
-
     function handoffGame() {
-        stopLoad();
-        api.onStartGame({
-            ante: ante,
-            funds: funds,
-            opponentFunds: opponentFunds,
-            opponent: opponent
-        })
-    }
-
-    function loadGameStep() {
-        loadTimer = 0;
-        if (removed) return;
-        if (loadPhase < 3) {
-            drawLoad("LOADING GAME");
-            loadPhase++;
-            loadTimer = setTimeout(loadGameStep, 100)
-        } else handoffGame()
+        const startGameCallback = api.onStartGame;
+        api.onStartGame = 0;
+        if (startGameCallback) {
+            startGameCallback({
+                ante: ante,
+                funds: funds,
+                opponentFunds: opponentFunds,
+                opponent: opponent
+            })
+        }
     }
 
     // --- Volume Adjustment submenu lifecycle ---
@@ -335,78 +251,46 @@
         }
     }
 
-    // --- Results screen lifecycle ---
-    function unloadResults(defragment) {
-        if (resultsStartTimer) {
-            clearTimeout(resultsStartTimer);
-            resultsStartTimer = 0
-        }
-        if (resultsModule && resultsModule.remove) resultsModule.remove();
-        resultsModule = 0;
-        if (defragment) E.defrag()
-    }
-
-    function startResultsAnimation() {
-        let sourceCode,
-            resultsFactory;
-        unloadResults(0);
-        try {
-            E.defrag()
-        } catch (error) {
-        }
-        try {
-            sourceCode = fs.readFileSync(appPath + "CARAVAN_RESULT_MENU.MIN.JS");
-            resultsFactory = eval(sourceCode);
-            sourceCode = 0;
-            resultsModule = resultsFactory({
-                fs: fs,
-                basePath: appPath,
-                opponent: opponent,
-                outcome: resultOutcome,
-                delta: resultDelta,
-                onComplete: function () {
-                    resultReady = 1;
-                    if (resultsModule && resultsModule.remove) resultsModule.remove();
-                    resultsModule = 0;
-                    try {
-                        E.defrag()
-                    } catch (error) {
-                    }
-                }
-            });
-            resultsFactory = 0
-        } catch (error) {
-            resultsModule = 0;
-            drawResultFallback()
-        }
-    }
-
-    function beginResultsAfterGame() {
-        resultsStartTimer = 0;
-        if (removed || screen !== 3) return;
-        try {
-            E.defrag()
-        } catch (error) {
-        }
-        startResultsAnimation()
-    }
-
     // --- Game and demo launch flow ---
+    function musicVolumeNeedsApply() {
+        let config = "",
+            target = 0,
+            applied = 15;
+        try {
+            config = fs.readFileSync(appPath + "VOLUME_SOUND.CFG") || ""
+        } catch (error) {
+            return 0
+        }
+        if (config.length < 8 || config.charAt(6) !== "1") return 0;
+        target = parseInt(config.charAt(7), 16);
+        if (isNaN(target) || target <= 0) return 0;
+        if (target > 15) target = 15;
+        if (config.length >= 9) {
+            applied = parseInt(config.charAt(8), 16);
+            if (isNaN(applied) || applied < 1 || applied > 15) applied = 15
+        }
+        return target !== applied
+    }
+
     function startGame() {
         let sourceCode = 0,
             applyFactory = 0,
             applyModule = 0;
         if (removed || funds < 10 || opponentFunds < 10 || ante < 10 || ante > betLimit()) return;
-        unloadResults(0);
         unloadSoundMenu(0);
         detachMenuListeners();
+        // The heavy volume patcher is needed only when the requested music
+        // level differs from the level already written into the WAV. Normal
+        // repeated games now skip this eval-loaded module entirely.
+        if (!musicVolumeNeedsApply()) {
+            handoffGame();
+            return
+        }
         function afterApply() {
             sourceCode = 0;
             applyFactory = 0;
             applyModule = 0;
-            process.memory(true);
-            loadPhase = 0;
-            loadGameStep()
+            handoffGame()
         }
         try {
             sourceCode = fs.readFileSync(appPath + "CARAVAN_VOLUME_APPLY.MIN.JS");
@@ -484,8 +368,8 @@
         let optionCount;
         if (direction) {
             const previousSelection = menuSelection;
-            optionCount = screen === 0 ? 5 : screen === 1 ? (funds < 10 ? 1 : 4)
-                : screen === 2 ? 2 : screen === 3 ? (funds < 10 ? 1 : 2) : 1;
+            optionCount = screen === 0 ? 5 : screen === 1 ? (funds < 10 || opponentFunds < 10 ? 1 : 4)
+                : screen === 2 ? 2 : 1;
             menuSelection += direction > 0 ? 1 : -1;
             if (menuSelection < 0) menuSelection = optionCount - 1;
             if (menuSelection >= optionCount) menuSelection = 0;
@@ -495,13 +379,13 @@
         }
         /*
          * Do not fire SELECT immediately before handing control to either
-         * Volume Adjustment or the game. The game music is 8 kHz and the
-         * firmware SELECT sound is 16 kHz; Play/Rematch now transition
-         * silently so the game cannot inherit that last UI-audio click.
+         * Volume Adjustment or the game. The game music and custom SFX are
+         * 16 kHz; Play/Rematch transition silently so a firmware UI cue cannot
+         * overlap the first game-audio stream.
          *
          * All other SELECT sounds stay enabled.
          */
-        if (!(screen === 2 && menuSelection === 0) && !(screen === 3 && menuSelection === 0)) {
+        if (!(screen === 2 && menuSelection === 0)) {
             Pip.playSound("SELECT")
         }
         if (screen === 0) {
@@ -522,7 +406,7 @@
                 return
             }
         } else if (screen === 1) {
-            if (funds < 10) {
+            if (funds < 10 || opponentFunds < 10) {
                 screen = 5;
                 menuSelection = 0
             } else if (menuSelection === 0) {
@@ -554,19 +438,6 @@
             }
             screen = 1;
             menuSelection = 2
-        } else if (screen === 3) {
-            if (funds < 10) {
-                unloadResults(1);
-                screen = 0;
-                menuSelection = 0
-            } else if (menuSelection === 0) {
-                startGame();
-                return
-            } else {
-                unloadResults(1);
-                screen = 0;
-                menuSelection = 0
-            }
         } else {
             screen = 0;
             menuSelection = 1
@@ -578,25 +449,15 @@
     function removeApp() {
         if (removed) return;
         removed = 1;
-        if (resultsStartTimer) {
-            clearTimeout(resultsStartTimer);
-            resultsStartTimer = 0
-        }
-        stopLoad();
         detachMenuListeners();
         if (demoModule && demoModule.remove) demoModule.remove();
         demoModule = 0;
-        if (resultsModule && resultsModule.remove) resultsModule.remove();
-        resultsModule = 0;
         if (soundModule && soundModule.remove) soundModule.remove();
         soundModule = 0;
+        api.onStartGame = 0;
     }
     attachMenuListeners();
     drawCurrentScreen();
-    if (screen === 3) {
-        if (resultsStartTimer) clearTimeout(resultsStartTimer);
-        resultsStartTimer = setTimeout(beginResultsAfterGame, 100)
-    }
     return {
         id: "CARAVAN_MENU",
         remove: removeApp

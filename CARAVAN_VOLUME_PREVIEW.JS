@@ -45,7 +45,9 @@
 
     // --- Preview lifecycle ---
     function previewDuration() {
-        return previewFileName === "LAZY_DAYS-TIRED_PREVIEW.WAV" ? 7680 : 1000
+        return previewFileName === "LAZY_DAYS-TIRED_PREVIEW.WAV" ? 7680
+            : previewFileName === "BOTTLE_CAP_PREVIEW.WAV" ? 2050
+            : previewFileName === "GAME_OVER_WIN.WAV" ? 1650 : 1000
     }
 
     function finishPreview() {

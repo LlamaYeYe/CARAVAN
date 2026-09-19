@@ -43,7 +43,18 @@
     }
 
     function removeGroupAt(cards, baseIndex) {
-        cards.splice(baseIndex, groupEndIndex(cards, baseIndex) - baseIndex)
+        const endIndex = groupEndIndex(cards, baseIndex),
+            removeCount = endIndex - baseIndex;
+        let cardIndex, targetLength;
+        if (removeCount <= 0) return;
+        // Compact in place, but do not assign to Array.length directly.
+        // The Pip-Boy 1.1.6 Espruino runtime can throw "Assignment to a constant"
+        // from direct length mutation in this face-card path.
+        targetLength = cards.length - removeCount;
+        for (cardIndex = endIndex; cardIndex < cards.length; cardIndex++) {
+            cards[cardIndex - removeCount] = cards[cardIndex]
+        }
+        while (cards.length > targetLength) cards.pop()
     }
 
     function groupValueAt(cards, baseIndex) {
@@ -109,7 +120,15 @@
     }
 
     function insertFaceAt(cards, baseIndex, card) {
-        cards.splice(groupEndIndex(cards, baseIndex), 0, card)
+        const insertIndex = groupEndIndex(cards, baseIndex);
+        let cardIndex;
+        // Grow with push() instead of cards.length++. Direct length mutation caused
+        // a hardware Espruino "Assignment to a constant" crash on face-card play.
+        cards.push(card);
+        for (cardIndex = cards.length - 1; cardIndex > insertIndex; cardIndex--) {
+            cards[cardIndex] = cards[cardIndex - 1]
+        }
+        cards[insertIndex] = card
     }
 
     function removeJokerMatches(cards, protectedCards, protectedBaseIndex, targetRank,
@@ -124,6 +143,9 @@
     }
 
     function playJoker(cards, baseIndex, card, playerCaravans, cpuCaravans, playerDirections, cpuDirections) {
+        // Joker is the heaviest single board mutation. Collect transient garbage
+        // first so a late-match Joker cannot be the allocation that tips the heap.
+        process.memory(true);
         const targetRank = rank(cards[baseIndex]);
         const targetSuit = suit(cards[baseIndex]);
         const matchBySuit = targetRank === 1;
@@ -318,13 +340,14 @@
     function chooseCpuMove(hand, cpuCaravans, cpuDirections, playerCaravans, playerDirections) {
         let bestScore = -10000;
         let encodedMove = -1;
+        let moveScore;
         if (openingPhase(cpuCaravans)) {
             for (let handIndex = 0; handIndex < hand.length; handIndex++) {
                 const card = hand[handIndex];
                 if (!isNumber(card)) continue;
                 for (let laneIndex = 0; laneIndex < 3; laneIndex++) {
                     if (cpuCaravans[laneIndex].length) continue;
-                    const moveScore = rank(card) * 3 + (random32() & 7);
+                    moveScore = rank(card) * 3 + (random32() & 7);
                     if (moveScore > bestScore) {
                         bestScore = moveScore;
                         encodedMove = (handIndex << 13) | (laneIndex << 10)
@@ -333,6 +356,15 @@
             }
             return encodedMove
         }
+        // If a CPU caravan is busted, remember disband as a fallback.
+        // A useful normal/face-card play can still beat this score.
+        for (let laneIndex = 0; laneIndex < 3; laneIndex++) {
+            if (total(cpuCaravans[laneIndex]) > 26) {
+                bestScore = 70 + (random32() & 7);
+                encodedMove = -(laneIndex + 2);
+                break
+            }
+        }
         for (let handIndex = 0; handIndex < hand.length; handIndex++) {
             const card = hand[handIndex];
             const cardRank = rank(card);
@@ -340,8 +372,9 @@
                 for (let laneIndex = 0; laneIndex < 3; laneIndex++) {
                     if (!canPlay(cpuCaravans, cpuDirections, laneIndex, card)) continue;
                     const projectedTotal = total(cpuCaravans[laneIndex]) + cardRank;
-                    const moveScore = projectedTotal > 26 ? -700 - projectedTotal
+                    moveScore = projectedTotal > 26 ? -700 - projectedTotal
                         : projectedTotal >= 21 ? 250 + projectedTotal : projectedTotal * 3;
+                    moveScore += random32() & 7;
                     if (moveScore > bestScore) {
                         bestScore = moveScore;
                         encodedMove = (handIndex << 13) | (laneIndex << 10)
@@ -357,7 +390,6 @@
                         if (!isNumber(targetCards[baseIndex])) continue;
                         const targetGroupValue = groupValueAt(targetCards, baseIndex);
                         let projectedTotal;
-                        let moveScore;
                         if (cardRank === 13) {
                             projectedTotal = currentTotal + targetGroupValue;
                             moveScore = targetBoard ? (currentTotal >= 21 && currentTotal <= 26
@@ -371,14 +403,20 @@
                                 && projectedTotal <= 26 ? 360 : currentTotal >= 21
                                 && currentTotal <= 26 ? -220 : 25)
                         } else if (cardRank === 12) {
-                            moveScore = targetBoard ? 8 : baseIndex === lastNumberIndex(targetCards) ? 55 : 4
+                            // Queen: use on the CPU's active end card, but never stack
+                            // another Queen immediately on top of a Queen.
+                            moveScore = !targetBoard && baseIndex === lastNumberIndex(targetCards)
+                                && rank(targetCards[targetCards.length - 1]) !== 12 ? 55 : -300
                         } else {
-                            moveScore = targetBoard ? 25 + targetGroupValue * 2 : -20
+                            // Joker: keep it simple and offensive rather than doing
+                            // expensive full-board look-ahead.
+                            moveScore = targetBoard ? 25 + targetGroupValue * 2 : -300
                         }
+                        moveScore += random32() & 7;
                         if (moveScore > bestScore) {
                             bestScore = moveScore;
-                            encodedMove = (handIndex << 13) | (targetBoard << 12) | (laneIndex << 10) | (baseIndex
-                                + 1)
+                            encodedMove = (handIndex << 13) | (targetBoard << 12) | (laneIndex << 10)
+                                | (baseIndex + 1)
                         }
                     }
                 }

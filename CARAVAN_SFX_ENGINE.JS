@@ -154,32 +154,14 @@
         }
     }
 
-    // --- Codec reset and cleanup ---
-    function resetCodec() {
-        if (removed) return;
-        /*
-         * Use the same high-level cleanup boundary as the public holotape
-         * games. Pip.audioStop() owns codec teardown; do not leave the DAC
-         * manually powered/configured while a menu sits idle.
-         */
-        try {
-            Pip.audioStop()
-        } catch (error) {
-        }
-    }
-
+    // --- Preview cleanup ---
     function stopPreview() {
         const hadPreview = previewActive || previewTimer;
         clearPreviewTimer();
         if (hadPreview) {
             try {
-                Pip.audioStop();
-                resetCodec()
+                Pip.audioStop()
             } catch (error) {
-                try {
-                    Pip.audioStop()
-                } catch (stopError) {
-                }
             }
         }
         previewActive = 0;
@@ -199,7 +181,6 @@
         isPreviewing: function () {
             return previewActive ? 1 : 0
         },
-        resetCodec: resetCodec,
         bankPath: bankPath,
         remove: remove
     }
