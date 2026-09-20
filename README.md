@@ -16,15 +16,19 @@ A playable recreation of **Caravan from Fallout: New Vegas** for **The Wand Comp
 - Disband Caravan support
 - Opening discard/redraw support
 - 14 randomized Fallout: New Vegas Caravan opponents
-- Demo / Tutorial mode
+- Built-in Tutorial
+- Caravan Rules / Controls screen
 - Rematch support
 - Challenge New Opponent
 - Player and opponent bottle-cap bankrolls
 - Betting limited by available bottle caps
 - Bottle-cap reset flow when funds run out
-- Animated win/loss result screen
+- Animated win/loss Results screen
+- Dedicated Game Over Win audio
 - Configurable sound effects and background music
+- Individual audio preview controls
 - Persistent volume settings
+- Low-memory menu and gameplay architecture designed for repeated matches
 
 ## Opponents
 
@@ -62,6 +66,29 @@ A caravan must total **21–26** and beat the opposing caravan to count as **SOL
 
 Equal totals remain tied.
 
+The game determines the winner once one side controls at least two of the three caravan lanes with no unresolved ties preventing the result.
+
+## Tutorial
+
+Caravan includes a built-in lightweight Tutorial covering the major controls and gameplay rules.
+
+The Tutorial explains:
+
+- Basic Caravan gameplay
+- Card placement
+- Caravan direction
+- Same-suit overrides
+- Selling caravans
+- Jacks
+- Queens
+- Kings
+- Jokers
+- Disbanding caravans
+- Winning and losing
+- Bottle-cap behavior
+
+The Tutorial uses a compact standalone renderer designed to reduce memory usage and can be safely left open without continuously running background animation.
+
 ## Bottle Caps
 
 The player and opponent both maintain their own bottle-cap totals.
@@ -70,17 +97,48 @@ Winning and losing updates each bankroll based on the current wager, and bets ca
 
 If the player runs out of caps, Caravan provides a reset flow that restores both bankrolls so another game can be started.
 
-## Low-Memory Runtime
+If the opponent runs out of caps, Caravan prevents another match from starting until the bankrolls are reset.
 
-Caravan is split into multiple runtime modules so the Pip-Boy does not need to keep the entire game loaded at once.
+Resetting restores both sides to their starting bottle-cap totals.
 
-The game uses cleanup, garbage collection, and defragmentation around heavier menu, gameplay, and result transitions to reduce memory pressure.
+## Results
 
-The result screen also uses a dedicated compact graphics bank:
+The Results screen includes animated bottle-cap artwork for wins and losses.
+
+Depending on the current bankroll and match state, the Results screen provides:
+
+- **Rematch**
+- **Challenge New Opponent**
+- **Back**
+- Bottle-cap reset / out-of-caps flows
+
+The result artwork uses its own compact graphics bank:
 
 `CARAVAN_RESULT_CAPS.BIN`
 
-This allows the bottle-cap result artwork to be displayed without loading the larger graphics bank during an already memory-heavy transition.
+This allows the result animation to run without loading the larger gameplay graphics bank during an already memory-heavy transition.
+
+## Low-Memory Runtime
+
+Caravan is split into multiple runtime modules specifically for the Pip-Boy's constrained Espruino environment.
+
+The game uses cleanup, garbage collection, and memory defragmentation around heavier menu, gameplay, audio, and Results transitions.
+
+The current runtime is designed so the main Game controller and Caravan Engine can remain resident between matches instead of repeatedly rebuilding the Engine.
+
+When extra memory is needed for heavier menus such as **Volume Adjustment** or **Tutorial**, Caravan can release the gameplay Renderer and idled Game Audio runtime while keeping the core game state available.
+
+When gameplay resumes, the required modules are loaded again without rebuilding the entire game engine.
+
+This architecture allows repeated:
+
+**Game → Results → Main Menu → Volume / Tutorial → Game**
+
+cycles while keeping memory usage stable on real Pip-Boy hardware.
+
+The Volume Adjustment and Tutorial interfaces also use compact standalone runtimes to reduce peak memory usage.
+
+Caravan does not generate diagnostic log files during normal use.
 
 ## Audio
 
@@ -89,30 +147,30 @@ Caravan includes:
 - Playing Card sound
 - Discard sound
 - Bottle Cap result audio
+- Game Over Win sound
 - Background music
+- Individual sound previews
 - Separate sound-effect and music volume settings
 - Persistent audio configuration
 
-Music:
+### Background Music
 
 **Lazy Day - Tired** — Geoff Harvey from Pixabay
 
-Playing Card and Discard sounds:
+### Playing Card and Discard Sounds
 
 **Alex from Pixabay**
 
-Bottle Cap result audio:
+### Bottle Cap Result Audio
 
 **The Wand Company Pip-Boy 3000**
 
-Game Over Win
+### Game Over Win Audio
 
-**The Wand Company Pip-Boy 3000 (Tv Series)**
+**Sound Distributed From Wand Company MK V (TV Series) PIP-BOY**
 
 ## Thank You
 
 Holotape artwork by **Goji!**
-
-He put work into the Caravan cover artwork and it turned out awesome.
 
 He put work into the Caravan cover artwork and it turned out awesome.
