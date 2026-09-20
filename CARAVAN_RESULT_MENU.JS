@@ -99,23 +99,23 @@
 
     // --- Result animation and input ---
     function drawChoices() {
-        h.setColor(0).fillRect(20, 220, 460, 319).setColor(3).setFontMonofonto16().setFontAlign(-1, -1);
+        h.setColor(0).fillRect(20, 210, 460, 319).setColor(3).setFontMonofonto16().setFontAlign(-1, -1);
         if (!canContinue) {
-            h.drawString("Not enough bottle caps to play...EXIT GAME!", 42, 258)
-                .drawRect(28, 253, 452, 281);
+            h.drawString("Not enough bottle caps to play...EXIT GAME!", 42, 253)
+                .drawRect(28, 248, 452, 276);
             return
         }
         if (!opponentCanContinue) {
-            h.drawString("Oops! You have won to much! GET OUT!", 42, 258)
-                .drawRect(28, 253, 452, 281);
+            h.drawString("Oops! You have won to much! GET OUT!", 42, 253)
+                .drawRect(28, 248, 452, 276);
             return
         }
-        h.drawString("Rematch", 42, 226);
-        if (selection === 0) h.drawRect(28, 221, 452, 249);
-        h.drawString("Challenge New Opponent", 42, 258);
-        if (selection === 1) h.drawRect(28, 253, 452, 281);
-        h.drawString("Back", 42, 290);
-        if (selection === 2) h.drawRect(28, 285, 452, 313)
+        h.drawString("Rematch", 42, 221);
+        if (selection === 0) h.drawRect(28, 216, 452, 244);
+        h.drawString("Challenge New Opponent", 42, 253);
+        if (selection === 1) h.drawRect(28, 248, 452, 276);
+        h.drawString("Back", 42, 285);
+        if (selection === 2) h.drawRect(28, 280, 452, 308)
     }
 
     function tick() {

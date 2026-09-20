@@ -10,6 +10,7 @@
         gameModule = 0,
         resultModule = 0,
         winModule = 0,
+        toolModule = 0,
         timer = 0,
         removed = 0,
         ante = 50,
@@ -19,7 +20,8 @@
         savedIdleTimeout = 0,
         idleDisabled = 0,
         pendingOutcome = "",
-        pendingDelta = 0;
+        pendingDelta = 0,
+        toolKind = 0;
 
     // --- Timing and memory helpers ---
     function clearTimer() {
@@ -79,12 +81,22 @@
         winModule = 0
     }
 
+    function unloadTool() {
+        if (toolModule && toolModule.remove) toolModule.remove();
+        toolModule = 0
+    }
+
+
     // --- Menu, game, and results flow ---
-    function loadMenu(compact) {
+    function loadMenu(compact, requestedSelection) {
         let sourceCode = 0,
             factory = 0;
         if (removed) return;
-        restoreIdle();
+        // Keep Pip-Boy automatic idle sleep disabled for the entire Caravan
+        // session. Static Caravan screens may be left open indefinitely without
+        // a sleep/wake cycle adding OS state on top of resident game modules.
+        disableIdle();
+        unloadTool();
         unloadMenu();
         reclaim();
         sourceCode = fs.readFileSync(basePath + (compact ? "CARAVAN_RETURN_MENU.MIN.JS" : "CARAVAN_MENU_INTERFACE.MIN.JS"));
@@ -94,18 +106,76 @@
             fs: fs,
             basePath: basePath,
             screen: 0,
-            menuSelection: 0,
+            menuSelection: requestedSelection || 0,
             ante: ante,
             funds: funds,
             opponentFunds: opponentFunds,
             opponent: opponent,
             resultOutcome: "DRAW",
             resultDelta: 0,
-            onStartGame: requestGame
+            onStartGame: requestGame,
+            onOpenTool: compact ? requestTool : 0
         });
         factory = 0;
         h.flip();
         Pip.lastFlip = getTime()
+    }
+
+    function requestTool(kind) {
+        if (removed) return;
+        toolKind = kind ? 1 : 0;
+        clearTimer();
+        timer = setTimeout(beginTool, 8)
+    }
+
+    function beginTool() {
+        let sourceCode = 0,
+            factory = 0;
+        timer = 0;
+        if (removed) return;
+        unloadMenu();
+        if (gameModule && gameModule[3]) gameModule[3]();
+        reclaim(1);
+        if (toolKind) {
+            h.clear().setColor(3).setFontMonofonto16().setFontAlign(0, -1)
+                .drawString("LOADING TUTORIAL...", 240, 146).setFontAlign(-1, -1);
+            h.flip();
+            Pip.lastFlip = getTime()
+        }
+        try {
+            sourceCode = fs.readFileSync(basePath + (toolKind ? "CARAVAN_TUTORIAL.MIN.JS"
+                : "CARAVAN_VOLUME_SOUND.MIN.JS"));
+            factory = eval(sourceCode);
+            sourceCode = 0;
+            toolModule = toolKind ? factory({
+                fs: fs,
+                basePath: basePath,
+                onExit: toolBack
+            }) : factory({
+                fs: fs,
+                basePath: basePath,
+                onBack: toolBack
+            });
+            factory = 0;
+            reclaim();
+        } catch (error) {
+            sourceCode = 0;
+            factory = 0;
+            toolModule = 0;
+            loadMenu(1, toolKind ? 1 : 3)
+        }
+    }
+
+    function toolBack() {
+        if (removed) return;
+        clearTimer();
+        timer = setTimeout(function () {
+            timer = 0;
+            if (removed) return;
+            unloadTool();
+            reclaim(1);
+            loadMenu(1, toolKind ? 1 : 3)
+        }, 1)
     }
 
     function requestGame(state) {
@@ -257,7 +327,6 @@
             if (removed) return;
             unloadResult();
             if (gameModule && gameModule[2]) gameModule[2]();
-            restoreIdle();
             reclaim(1);
             // Give the just-released Results closure one more event turn before
             // reading/evaluating the compact post-game menu.
@@ -281,6 +350,7 @@
         unloadGame();
         unloadResult();
         unloadWin();
+        unloadTool();
         restoreIdle();
         reclaim()
     }

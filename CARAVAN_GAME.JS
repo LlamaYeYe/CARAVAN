@@ -39,21 +39,9 @@
         faceBase = -1,
         laneMode = 0,
         message = "YOUR TURN",
-        renderState = 0,
-        gameNumber = 0;
+        renderState = 0;
 
-    // --- Diagnostics and render state ---
-    function logEvent(eventName) {
-        try {
-            if (Pip.log) {
-                const memoryState = process.memory();
-                Pip.log("CV G" + gameNumber + " " + eventName + " F" + memoryState.free + " T" + memoryState
-                    .total, "CARAVAN.LOG")
-            }
-        } catch (error) {
-        }
-    }
-
+    // --- Render state ---
     function createRenderState() {
         return [api[2], playerHand, playerCaravans, cpuCaravans, handIndex, targetIndex, cpuTurn,
             actionMenuOpen, actionSelection, faceMode, faceBoard, faceLane, faceBase, 0, message,
@@ -134,16 +122,13 @@
         handIndex = targetIndex = cpuTurn = turnCount = actionMenuOpen = actionSelection = faceMode = faceBoard = faceLane = faceCursor = laneMode = 0;
         faceBase = -1;
         process.memory(true);
-        logEvent("DATAFREE")
     }
 
     function returnResult() {
         const outcome = currentResult() || "DRAW",
             done = api[3];
         finishTimer = 0;
-        logEvent("RESULT " + outcome);
         if (audio) audio[2]();
-        logEvent("AUDIOFREE");
         releaseGameplayModules();
         if (done) done(outcome)
     }
@@ -691,11 +676,8 @@
         Pip.lastFlip = getTime();
         process.memory(true);
         E.defrag();
-        gameNumber++;
         if (!audio) audio = loadModule("CARAVAN_GAME_AUDIO.MIN.JS", [fs, basePath]);
-        logEvent("AUDIOCORE");
         if (audio) audio[0]();
-        logEvent("AUDIOACTIVE");
         // The controller already owns these handlers, so avoid eval-loading a
         // separate controls wrapper every match. onExclusive replaces any stale
         // empty listener entries left by the prior Results screen.
@@ -703,7 +685,6 @@
         Pip.onExclusive("knob2", handleRightKnob);
         inputAttached = 1;
         ready = 1;
-        logEvent("READY")
     }
 
     function restartGame(newOpponent) {
@@ -713,7 +694,6 @@
         if (finishTimer) clearTimeout(finishTimer);
         cpuTimer = finishTimer = 0;
         ready = 0;
-        logEvent("REMATCH");
         process.memory(true);
         bootTimer = setTimeout(bootMatch, 1)
     }
@@ -743,7 +723,21 @@
         renderer = 0;
         process.memory(true);
         E.defrag();
-        logEvent("MENUSUSPEND")
+    }
+
+    function suspendForHeavyMenu() {
+        if (removed) return;
+        ready = 0;
+        detachInput();
+        if (renderer) renderer[6]();
+        renderer = 0;
+        // Heavy post-game tools need extra eval headroom. Release only the
+        // idled Audio controller and keep Engine resident so the proven Engine
+        // reload leak cannot return.
+        if (audio) audio[3]();
+        audio = 0;
+        process.memory(true);
+        E.defrag();
     }
 
     // --- Final cleanup ---
@@ -768,5 +762,5 @@
         process.memory(true)
     }
     bootTimer = setTimeout(bootMatch, 1);
-    return [removeGame, restartGame, suspendForMenu]
+    return [removeGame, restartGame, suspendForMenu, suspendForHeavyMenu]
 })

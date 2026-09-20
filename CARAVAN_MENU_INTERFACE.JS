@@ -21,7 +21,8 @@
         soundModule = 0,
         knob1Attached = 0,
         knob2Attached = 0,
-        removed = 0;
+        removed = 0,
+        volumeTimer = 0;
 
     // --- Drawing primitives and menu screens ---
     function drawHeader(title) {
@@ -45,7 +46,7 @@
         h.drawString("Fallout: New Vegas Card Game", 42, 48).drawString("Opponent: " + opponent, 42, 68)
             .drawLine(42, 96, 438, 96);
         drawMenuRow("Play Caravan", 0, menuSelection === 0);
-        drawMenuRow("Demo / Tutorial", 1, menuSelection === 1);
+        drawMenuRow("Tutorial", 1, menuSelection === 1);
         drawMenuRow("Rules / Controls", 2, menuSelection === 2);
         drawMenuRow("Volume Adjustment", 3, menuSelection === 3);
         drawMenuRow("< Back", 4, menuSelection === 4)
@@ -100,21 +101,20 @@
 
     function drawRules() {
         drawHeader("CARAVAN - CONTROLS");
-        h.setFont("6x8", 1).drawString("BOTH WHEELS", 30, 46)
-            .drawString("Turn either wheel to move selection.", 46, 59)
-            .drawString("Cards, tracks, menus and targets all scroll.", 46, 71)
-            .drawString("LEFT WHEEL PRESS", 30, 89)
-            .drawString("Press to open or confirm an action.", 46, 102)
-            .drawString("NORMAL PLAY", 30, 120)
-            .drawString("Scroll LEFT past first card -> caravan tracks.", 46, 133)
-            .drawString("Click card: Play / Discard / Cancel.", 46, 145)
-            .drawString("Click track: Disband Caravan / Cancel.", 46, 157)
-            .drawString("PLAY CARD", 30, 175)
-            .drawString("Play: scroll track; LEFT place; edge = Back.", 46, 188)
-            .drawString("FACE CARDS", 30, 206)
-            .drawString("Choose board, scroll target, LEFT press.", 46, 219)
-            .drawString("21-26; win 2 of 3. Empty deck+hand = loss.", 46, 237);
-        drawMenuRow("< Back", 5, 1)
+        h.setFontMonofonto16().setColor(3)
+            .drawString("BOTH WHEELS", 30, 43)
+            .drawString("Turn: scroll menus, cards and targets.", 42, 64)
+            .drawString("LEFT WHEEL PRESS", 30, 86)
+            .drawString("Press: open or confirm an action.", 42, 107)
+            .drawString("NORMAL PLAY", 30, 129)
+            .drawString("Scroll LEFT past card 1 for tracks.", 42, 150)
+            .drawString("Card: Play / Discard / Cancel.", 42, 171)
+            .drawString("Track: Disband Caravan / Cancel.", 42, 192)
+            .drawString("Face: choose board, then target.", 42, 213)
+            .drawString("21-26 wins lane; win 2 of 3.", 42, 234)
+            .drawString("Empty deck + hand = loss.", 42, 255)
+            .drawString("< Back", 42, 286)
+            .drawRect(28, 281, 452, 309)
     }
 
     function menuRowForSelection(selection) {
@@ -126,7 +126,7 @@
 
     function menuTextForSelection(selection) {
         if (screen === 0) return selection === 0 ? "Play Caravan" : selection === 1
-            ? "Demo / Tutorial" : selection === 2 ? "Rules / Controls" : selection === 3
+            ? "Tutorial" : selection === 2 ? "Rules / Controls" : selection === 3
             ? "Volume Adjustment" : "< Back";
         if (screen === 1) return funds < 10 ? "Not enough bottle caps to play...CLICK HERE!"
             : opponentFunds < 10 ? "Opponent has no bottle caps...CLICK HERE!"
@@ -184,6 +184,7 @@
         if (defragment) E.defrag()
     }
 
+
     function onSoundMenuExit() {
         unloadSoundMenu(0);
         screen = 0;
@@ -192,14 +193,14 @@
         drawMainMenu()
     }
 
-    function startSoundMenu() {
-        let sourceCode,
-            soundFactory;
-        detachMenuListeners();
-        /*
-         * Avoid a visible multi-second defrag pause when opening Volume
-         * Adjustment. The critical menu->game defrag remains untouched.
-         */
+    function loadSoundMenuDeferred() {
+        let sourceCode = 0,
+            soundFactory = 0;
+        volumeTimer = 0;
+        if (removed) return;
+        process.memory(true);
+        E.defrag();
+        process.memory(true);
         try {
             sourceCode = fs.readFileSync(appPath + "CARAVAN_VOLUME_SOUND.MIN.JS");
             soundFactory = eval(sourceCode);
@@ -209,15 +210,25 @@
                 basePath: appPath,
                 onBack: onSoundMenuExit
             });
-            soundFactory = 0
+            soundFactory = 0;
+            process.memory(true);
         } catch (error) {
             sourceCode = 0;
             soundFactory = 0;
             soundModule = 0;
-            menuSelection = 3;
-            attachMenuListeners();
-            drawMainMenu()
+            if (!removed) {
+                menuSelection = 3;
+                attachMenuListeners();
+                drawMainMenu()
+            }
         }
+    }
+
+    function startSoundMenu() {
+        if (removed || volumeTimer) return;
+        detachMenuListeners();
+        // Let the knob callback return before eval-loading the large Volume UI.
+        volumeTimer = setTimeout(loadSoundMenuDeferred, 8)
     }
 
     // --- Menu input listeners ---
@@ -328,7 +339,7 @@
             demoFactory;
         detachMenuListeners();
         E.defrag();
-        h.clear().setColor(3).setFontMonofonto16().setFontAlign(0, -1).drawString("LOADING DEMO...", 240, 146)
+        h.clear().setColor(3).setFontMonofonto16().setFontAlign(0, -1).drawString("LOADING TUTORIAL...", 240, 146)
             .setFontAlign(-1, -1);
         sourceCode = fs.readFileSync(appPath + "CARAVAN_TUTORIAL.MIN.JS");
         demoFactory = eval(sourceCode);
@@ -385,7 +396,7 @@
          *
          * All other SELECT sounds stay enabled.
          */
-        if (!(screen === 2 && menuSelection === 0)) {
+        if (!((screen === 2 && menuSelection === 0) || (screen === 0 && menuSelection === 3))) {
             Pip.playSound("SELECT")
         }
         if (screen === 0) {
@@ -449,6 +460,10 @@
     function removeApp() {
         if (removed) return;
         removed = 1;
+        if (volumeTimer) {
+            clearTimeout(volumeTimer);
+            volumeTimer = 0
+        }
         detachMenuListeners();
         if (demoModule && demoModule.remove) demoModule.remove();
         demoModule = 0;

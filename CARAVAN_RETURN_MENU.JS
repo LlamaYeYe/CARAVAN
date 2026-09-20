@@ -5,19 +5,21 @@
 (function (api) {
     const fs = api.fs,
         basePath = api.basePath;
-    let selection = 0,
+    let selection = api.menuSelection || 0,
         screen = 0,
         removed = 0,
         child = 0,
         ante = api.ante,
         funds = api.funds,
         opponentFunds = api.opponentFunds,
-        opponent = api.opponent || "Ringo";
+        opponent = api.opponent || "Ringo",
+        volumeTimer = 0;
 
     function reclaim(hard) {
         process.memory(true);
         if (hard) E.defrag()
     }
+
 
     function updateState(state) {
         if (!state) return;
@@ -47,7 +49,7 @@
             .drawString("Opponent: " + opponent, 42, 68)
             .drawLine(42, 96, 438, 96);
         drawRow("Play Caravan", 0, selection === 0);
-        drawRow("Demo / Tutorial", 1, selection === 1);
+        drawRow("Tutorial", 1, selection === 1);
         drawRow("Rules / Controls", 2, selection === 2);
         drawRow("Volume Adjustment", 3, selection === 3);
         drawRow("< Back", 4, selection === 4)
@@ -55,22 +57,20 @@
 
     function drawRules() {
         drawHeader("CARAVAN - CONTROLS");
-        h.setFont("6x8", 1).drawString("BOTH WHEELS", 30, 46)
-            .drawString("Turn either wheel to move selection.", 46, 59)
-            .drawString("Cards, tracks, menus and targets all scroll.", 46, 71)
-            .drawString("LEFT WHEEL PRESS", 30, 89)
-            .drawString("Press to open or confirm an action.", 46, 102)
-            .drawString("NORMAL PLAY", 30, 120)
-            .drawString("Scroll LEFT past first card -> caravan tracks.", 46, 133)
-            .drawString("Click card: Play / Discard / Cancel.", 46, 145)
-            .drawString("Click track: Disband Caravan / Cancel.", 46, 157)
-            .drawString("PLAY CARD", 30, 175)
-            .drawString("Play: scroll track; LEFT place; edge = Back.", 46, 188)
-            .drawString("FACE CARDS", 30, 206)
-            .drawString("Choose board, scroll target, LEFT press.", 46, 219)
-            .drawString("21-26; win 2 of 3. Empty deck+hand = loss.", 46, 237);
-        h.setFontMonofonto16();
-        drawRow("< Back", 5, 1)
+        h.setFontMonofonto16().setColor(3)
+            .drawString("BOTH WHEELS", 30, 43)
+            .drawString("Turn: scroll menus, cards and targets.", 42, 64)
+            .drawString("LEFT WHEEL PRESS", 30, 86)
+            .drawString("Press: open or confirm an action.", 42, 107)
+            .drawString("NORMAL PLAY", 30, 129)
+            .drawString("Scroll LEFT past card 1 for tracks.", 42, 150)
+            .drawString("Card: Play / Discard / Cancel.", 42, 171)
+            .drawString("Track: Disband Caravan / Cancel.", 42, 192)
+            .drawString("Face: choose board, then target.", 42, 213)
+            .drawString("21-26 wins lane; win 2 of 3.", 42, 234)
+            .drawString("Empty deck + hand = loss.", 42, 255)
+            .drawString("< Back", 42, 286)
+            .drawRect(28, 281, 452, 309)
     }
 
     function detach() {
@@ -155,9 +155,14 @@
         let sourceCode = 0,
             factory = 0;
         detach();
+        if (api.onOpenTool) {
+            removed = 1;
+            api.onOpenTool(1);
+            return
+        }
         reclaim(1);
         h.clear().setColor(3).setFontMonofonto16().setFontAlign(0, -1)
-            .drawString("LOADING DEMO...", 240, 146).setFontAlign(-1, -1);
+            .drawString("LOADING TUTORIAL...", 240, 146).setFontAlign(-1, -1);
         h.flip();
         Pip.lastFlip = getTime();
         sourceCode = fs.readFileSync(basePath + "CARAVAN_TUTORIAL.MIN.JS");
@@ -177,16 +182,43 @@
         drawMain()
     }
 
-    function openVolume() {
+    function loadVolumeDeferred() {
         let sourceCode = 0,
             factory = 0;
-        detach();
+        volumeTimer = 0;
+        if (removed) return;
         reclaim(1);
-        sourceCode = fs.readFileSync(basePath + "CARAVAN_VOLUME_SOUND.MIN.JS");
-        factory = eval(sourceCode);
-        sourceCode = 0;
-        child = factory({ fs: fs, basePath: basePath, onBack: backFromVolume });
-        factory = 0
+        reclaim(0);
+        try {
+            sourceCode = fs.readFileSync(basePath + "CARAVAN_VOLUME_SOUND.MIN.JS");
+            factory = eval(sourceCode);
+            sourceCode = 0;
+            child = factory({ fs: fs, basePath: basePath, onBack: backFromVolume });
+            factory = 0;
+            reclaim(0);
+        } catch (error) {
+            sourceCode = 0;
+            factory = 0;
+            child = 0;
+            if (!removed) {
+                selection = 3;
+                screen = 0;
+                attach();
+                drawMain()
+            }
+        }
+    }
+
+    function openVolume() {
+        if (removed || volumeTimer) return;
+        detach();
+        if (api.onOpenTool) {
+            removed = 1;
+            api.onOpenTool(0);
+            return
+        }
+        // Let the knob callback unwind before loading the Volume module.
+        volumeTimer = setTimeout(loadVolumeDeferred, 8)
     }
 
     function exitHolotape() {
@@ -230,6 +262,10 @@
     function remove() {
         if (removed) return;
         removed = 1;
+        if (volumeTimer) {
+            clearTimeout(volumeTimer);
+            volumeTimer = 0
+        }
         detach();
         releaseChild();
         api.onStartGame = 0

@@ -1,239 +1,53 @@
 /*
  * CARAVAN - CARAVAN_TUTORIAL.JS
- * Interactive tutorial flow using the production game renderer.
- * Readable source only; installed runtime remains in the matching minified file.
+ * Compact timer-free tutorial. No production renderer dependency.
+ * Safe to leave open indefinitely; redraws happen only on user input.
  */
 (function (api) {
-    const fs = api.fs,
-        basePath = api.basePath;
+    const pages = "STARTING HAND^Start with 8 cards.|All 3 caravans begin empty.|Opening: play A-10 once|into EACH empty caravan.~CHOOSE A CARAVAN^After choosing Play Card,|turn EITHER wheel.|Choose one of 3 caravans.|LEFT press places the card.~CURRENT SCROLLING^Turn EITHER wheel through your hand.|From card 1, turn LEFT -> tracks.|Scroll all 3 caravan tracks.|Past track 3 -> cards again.~OPENING RULE^Only A-10 may open a caravan.|Play one number into each first.|Occupied opening lane = INVALID.|Discard/redraw is allowed.~ACE^Ace is worth 1 point.|It counts as a number card.|It can open an empty caravan.~KING^Attach King to any number card.|It doubles that card's value.|Kings can target either board.~QUEEN^Attach Queen to a number card.|On the lead card it changes suit|and reverses caravan direction.~JACK^Attach Jack to any number card.|It removes that number card|and all face cards attached to it.|Jacks can target either board.~JOKER^Joker on Ace removes its suit.|Joker on 2-10 removes that rank.|Jokers can target either board.~CARD ACTION^Select a card in your hand.|LEFT press opens its action menu.|Choose Play Card, Discard,|or Cancel with either wheel.~DISCARD CARD^Choose Discard Card to throw away|the selected card and redraw.|LEFT press confirms the action.~TRACK ACTION^From card 1, scroll LEFT to tracks.|Scroll among all 3 caravan tracks.|LEFT press: Disband / Cancel.|Past track 3 returns to hand.~FACE CARD TARGETING^Play a face card, then choose|YOUR board or the opponent board.|Either wheel scrolls targets.|LEFT press places the face card.~SOLD AND WINNING^A caravan total of 21-26 is SOLD.|Higher SOLD total wins that lane.|Win at least 2 of the 3 lanes.|Equal totals remain tied.~DECK EXHAUSTION^If your deck AND hand are empty,|you lose unless that last move|already won the match.~CURRENT END FLOW^Bet: Auto-Match / Raise / Accept.|Win: music fades, then Game Over Win.|Results follows the win sound.|Cap animation follows cap audio.~ZERO-CAP STATES^You at 0: Not enough caps...CLICK HERE!|Opponent at 0: GET OUT! then menu.|Next Play says opponent has no caps.|CLICK HERE resets both bankrolls.~TUTORIAL COMPLETE^Current scrolling, face cards,|Results flow, and zero-cap states|are covered. Deals are randomized.|LEFT press returns to Caravan.";
     let step = 0,
-        targetIndex = 0,
-        handIndex = 0,
-        actionSelection = 0,
-        actionMenuOpen = 0,
-        laneMode = 0,
         removed = 0,
         knob1Attached = 0,
-        knob2Attached = 0,
-        renderer = 0,
-        bootTimer = 0,
-        drawTimer = 0,
-        hintTimer = 0,
-        renderBusy = 1,
-        totalCards = 54,
-        playerHand = [1, 29, 44, 59, 14, 9, 23, 35],
-        cpuHand = [],
-        playerCaravans = [[], [], []],
-        cpuCaravans = [[], [], []],
-        state = ["RINGO", playerHand, playerCaravans, cpuCaravans, 0, 0, 0, 0, 0, 0, 0, 0, -1, 54,
-        "YOUR TURN", 0];
+        knob2Attached = 0;
 
-    // --- Demo drawing helpers ---
-    function rank(card) {
-        return card & 15
-    }
-
-    function spacedBold(text, x, y, align) {
-        const step = 7,
-            width = text.length ? text.length * step - 1 : 0;
-        let drawX = align === 0 ? x - Math.floor(width / 2) : align === 1 ? x - width : x;
-        h.setFont("6x8", 1).setFontAlign(-1, -1);
-        for (let characterIndex = 0; characterIndex < text.length; characterIndex++) {
-            h.drawString(text[characterIndex],
-                drawX,
-                y).drawString(text[characterIndex],
-                drawX + 1,
-                y);
-            drawX += step
+    function drawPage() {
+        let start = 0,
+            end = 0,
+            separator = 0,
+            lineEnd = 0,
+            row = 0,
+            page = "";
+        for (let index = 0; index < step; index++) {
+            start = pages.indexOf("~", start) + 1
         }
-    }
-
-    function hintBox(x, y, boxWidth, boxHeight, lines) {
-        h.setColor(0).fillRect(x, y, x + boxWidth, y + boxHeight).setColor(3).drawRect(x, y, x
-            + boxWidth, y + boxHeight)
-            .drawRect(x + 2, y + 2, x + boxWidth - 2, y + boxHeight - 2);
-        spacedBold("HINT", x + Math.floor(boxWidth / 2), y + 7, 0);
-        h.drawLine(x + 8, y + 20, x + boxWidth - 8, y + 20);
-        for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) spacedBold(lines[lineIndex],
-            x + 10,
-            y + 27 + lineIndex * 13,
-            -1)
-    }
-
-    function isolatedHintBox(x,
-        y,
-        boxWidth,
-        boxHeight,
-        lines) {
-        h.setColor(0).fillRect(x - 4,
-            y - 4,
-            x + boxWidth + 4,
-            y + boxHeight + 4);
-        hintBox(x, y, boxWidth, boxHeight, lines)
-    }
-
-    function cardHintBox(cardCenter, boxWidth, boxHeight, lines) {
-        let x = cardCenter - Math.floor(boxWidth / 2);
-        if (x < 8) x = 8;
-        if (x + boxWidth > 471) x = 471 - boxWidth;
-        isolatedHintBox(x, 116, boxWidth, boxHeight, lines)
-    }
-
-    // --- Renderer state and hint drawing ---
-    function syncState() {
-        state[4] = handIndex;
-        state[5] = targetIndex;
-        state[7] = actionMenuOpen;
-        state[8] = actionSelection;
-        state[13] = totalCards;
-        state[2] = playerCaravans;
-        state[3] = cpuCaravans;
-        state[16] = laneMode ? laneMode : step === 1 ? 1 : step === 11 ? 3 : 0
-    }
-
-    function drawBase() {
-        syncState();
-        renderer[0](state)
-    }
-
-    function drawHint() {
-        if (step === 0) {
-            hintBox(66, 58, 348, 126, ["Start with 8 cards.", "All 3 caravans start empty.",
-                "Opening: play A-10 once",
-                "into EACH empty caravan.", "Press LEFT wheel."])
-        } else if (step === 1) {
-            isolatedHintBox(258, 217, 198, 84, ["Turn EITHER WHEEL", "after choosing Play Card.",
-                "Select an EMPTY caravan.", "LEFT press places it."])
-        } else if (step === 2) {
-            hintBox(12, 48, 300, 126, ["CURRENT SCROLLING", "Turn EITHER wheel through hand.",
-                "All 8 cards scroll on screen.", "From card 1, turn LEFT -> tracks.",
-                "Past right track -> cards again."])
-        } else if (step === 3) {
-            isolatedHintBox(82, 88, 316, 108, ["OPENING RULE", "Only A-10 may be played.",
-                "One card per caravan first.",
-                "Occupied opening lane = INVALID.", "Discard/redraw IS allowed."])
-        } else if (step === 4) {
-            cardHintBox(41, 224, 96, ["ACE", "Ace is worth 1 point.", "It counts as a number card.",
-                "Press LEFT wheel."])
-        } else if (step === 5) {
-            cardHintBox(132, 214, 96, ["KING", "Attach to any number card.", "It doubles that card's value.",
-                "Can target either board."])
-        } else if (step === 6) {
-            cardHintBox(223, 222, 96, ["QUEEN", "Attach to a number card.", "On the lead card it changes",
-                "suit and reverses direction."])
-        } else if (step === 7) {
-            cardHintBox(314, 214, 96, ["JACK", "Attach to any number card.", "Removes it and its faces.",
-                "Can target either board."])
-        } else if (step === 8) {
-            cardHintBox(405, 228, 96, ["JOKER", "On Ace: removes its suit.", "On 2-10: removes that rank.",
-                "Can target either board."])
-        } else if (step === 9) {
-            hintBox(84, 214, 312, 96, ["CARD ACTION", "Turn EITHER WHEEL.", "Choose Play Card.",
-                "LEFT press confirms."])
-        } else if (step === 10) {
-            isolatedHintBox(90, 211, 300, 88, ["CARD ACTION", "Choose Discard Card.", "Or choose Cancel.",
-                "LEFT press confirms."])
-        } else if (step === 11) {
-            isolatedHintBox(70, 197, 340, 104, ["TRACK ACTION", "Card 1 + LEFT enters tracks.",
-                "Scroll all 3 caravan tracks.", "LEFT press: Disband / Cancel.",
-                "Right past track 3 returns to hand."])
-        } else if (step === 12) {
-            hintBox(62, 58, 356, 126, ["FACE CARD TARGETING", "Play Card -> choose YOUR or",
-                "RINGO board from the popup.",
-                "EITHER wheel scrolls targets.", "LEFT press places the face card."])
-        } else if (step === 13) {
-            hintBox(74, 64, 332, 116, ["21-26 means SOLD.", "Higher sold total wins lane.",
-                "Win at least 2 of 3.",
-                "Press LEFT wheel."])
-        } else if (step === 14) {
-            hintBox(66, 70, 348, 108, ["DECK EXHAUSTION", "If your deck AND hand are empty,",
-                "you lose unless that last move", "already won the match.",
-                "Press LEFT wheel."])
-        } else if (step === 15) {
-            hintBox(48, 52, 384, 140, ["CURRENT END FLOW", "Bet: Auto-Match / Raise / Accept / Exit.",
-                "Win: music -> Game Over Win -> Results.", "Cap number moves with cap audio.",
-                "Press LEFT wheel."])
-        } else if (step === 16) {
-            hintBox(34, 48, 412, 152, ["ZERO-CAP STATES", "You at 0: Not enough caps...CLICK HERE!",
-                "Opponent at 0: Oops! You have won", "to much! GET OUT! -> Caravan menu.",
-                "Next Play: Opponent has no caps...", "CLICK HERE! resets Total Ante."])
-        } else {
-            hintBox(74, 74, 332, 108, ["Demo complete.", "Current scrolling and Results shown.",
-                "Deals are randomized.", "Press LEFT wheel to return."])
+        end = pages.indexOf("~", start);
+        if (end < 0) end = pages.length;
+        page = pages.substring(start, end);
+        separator = page.indexOf("^");
+        h.clear().setColor(3).setFontMonofonto16().setFontAlign(0, -1)
+            .drawString("CARAVAN - TUTORIAL", 240, 9)
+            .drawLine(18, 34, 462, 34)
+            .setFontMonofonto14().drawString("PAGE " + (step + 1) + " / 18", 240, 42)
+            .setFontMonofonto23().drawString(page.substring(0, separator), 240, 64)
+            .drawLine(48, 94, 432, 94)
+            .setFontMonofonto16().setFontAlign(-1, -1);
+        start = separator + 1;
+        while (start <= page.length && row < 6) {
+            lineEnd = page.indexOf("|", start);
+            if (lineEnd < 0) lineEnd = page.length;
+            h.drawString(page.substring(start, lineEnd), 42, 112 + row * 27);
+            row++;
+            if (lineEnd >= page.length) break;
+            start = lineEnd + 1
         }
-    }
-
-    // --- Tutorial step progression ---
-    function prepareStep() {
-        state[15] = 0;
-        laneMode = step === 11 ? 3 : 0;
-        if (step === 0) {
-            playerCaravans = [[], [], []];
-            cpuCaravans = [[], [], []];
-            totalCards = 54
-        } else if (step <= 3) {
-            playerCaravans = [[5], [], []];
-            cpuCaravans = [[7], [], []];
-            totalCards = 53
-        } else {
-            playerCaravans = [[5], [24], [39]];
-            cpuCaravans = [[7], [21], [36]];
-            totalCards = 51
-        }
-        if (step === 4) handIndex = 0;
-        else if (step === 5) handIndex = 1;
-        else if (step === 6) handIndex = 2;
-        else if (step === 7) handIndex = 3;
-        else if (step === 8) handIndex = 4;
-        else if (step === 3) handIndex = 5
-    }
-
-    function clearDrawTimers() {
-        if (drawTimer) {
-            clearTimeout(drawTimer);
-            drawTimer = 0
-        }
-        if (hintTimer) {
-            clearTimeout(hintTimer);
-            hintTimer = 0
-        }
-    }
-
-    function scheduleDrawStep(attachAfter) {
-        clearDrawTimers();
-        renderBusy = 1;
-        drawTimer = setTimeout(function () {
-            drawTimer = 0;
-            if (removed) return;
-            prepareStep();
-            drawBase();
-            hintTimer = setTimeout(function () {
-                hintTimer = 0;
-                if (removed) return;
-                drawHint();
-                renderBusy = 0;
-                if (attachAfter) attach()
-            }, 35)
-        }, 20)
-    }
-
-    // --- Renderer and input lifecycle ---
-    function loadRenderer() {
-        let sourceCode,
-            rendererFactory;
-        try {
-            E.defrag()
-        } catch (error) {
-        }
-        sourceCode = fs.readFileSync(basePath + "CARAVAN_DRAW_SCREEN.MIN.JS");
-        rendererFactory = eval(sourceCode);
-        sourceCode = 0;
-        renderer = rendererFactory([fs, basePath]);
-        rendererFactory = 0;
-        try {
-            E.defrag()
-        } catch (error) {
-        }
+        h.setFont("6x8", 1).setFontAlign(0, -1)
+            .drawLine(42, 280, 438, 280)
+            .drawString(step === 17 ? "LEFT PRESS: RETURN     TURN: REVIEW" : "LEFT PRESS: CONTINUE     TURN: REVIEW", 240, 292)
+            .setFontMonofonto16().setFontAlign(-1, -1);
+        h.flip();
+        Pip.lastFlip = getTime();
+        page = "";
+        process.memory(true)
     }
 
     function detach() {
@@ -260,121 +74,51 @@
         }
     }
 
-    function nextStep() {
-        step++;
-        actionMenuOpen = step === 9 || step === 10;
-        actionSelection = step === 9 ? 0 : step === 10 ? 1 : 0;
-        laneMode = step === 11 ? 3 : 0;
-        if (step === 11) targetIndex = 1;
-        scheduleDrawStep(0)
-    }
-
-    // --- Tutorial controls ---
-    function onKnob1(direction) {
-        if (renderBusy) return;
-        if (direction) {
-            if (step === 1 || step === 11) {
-                const previous = targetIndex;
-                targetIndex += direction > 0 ? 1 : -1;
-                if (targetIndex < 0) targetIndex = 0;
-                if (targetIndex > 2) targetIndex = 2;
-                state[5] = targetIndex;
-                Pip.playSound("SCROLL");
-                renderer[2](state, previous)
-            } else if (step === 2) {
-                const previousHandIndex = handIndex,
-                    previousTargetIndex = targetIndex,
-                    previousLaneMode = laneMode;
-                if (laneMode === 3) {
-                    if (direction > 0 && targetIndex === 2) {
-                        laneMode = 0;
-                        handIndex = 0
-                    } else if (direction > 0) targetIndex++;
-                    else if (targetIndex > 0) targetIndex--
-                } else if (direction < 0 && handIndex === 0) {
-                    laneMode = 3;
-                    targetIndex = 2
-                } else {
-                    handIndex += direction > 0 ? 1 : -1;
-                    if (handIndex < 0) handIndex = 0;
-                    if (handIndex >= playerHand.length) handIndex = playerHand.length - 1
-                }
-                Pip.playSound("SCROLL");
-                syncState();
-                if (previousLaneMode !== laneMode) {
-                    drawBase();
-                    drawHint()
-                } else if (laneMode === 3) {
-                    renderer[2](state, previousTargetIndex);
-                    drawHint()
-                } else {
-                    renderer[1](state, previousHandIndex)
-                }
-            } else if (step === 9 || step === 10) {
-                const previous = actionSelection;
-                actionSelection += direction > 0 ? 1 : -1;
-                if (actionSelection < 0) actionSelection = 2;
-                if (actionSelection > 2) actionSelection = 0;
-                state[8] = actionSelection;
-                Pip.playSound("SCROLL");
-                renderer[4](state, 0, previous)
-            }
-            return
-        }
-        Pip.playSound("SELECT");
-        if (step >= 0 && step <= 8 || step >= 11 && step <= 16) {
-            nextStep();
-            return
-        }
-        if (step === 9) {
-            if (actionSelection !== 0) return;
-            nextStep();
-            return
-        }
-        if (step === 10) {
-            if (actionSelection !== 1) return;
-            nextStep();
-            return
-        }
+    function exitDemo() {
+        if (removed) return;
+        removed = 1;
         detach();
-        if (renderer) renderer[6]();
-        renderer = 0;
         if (api.onExit) api.onExit()
     }
 
-    function onKnob2(direction) {
-        if (direction) onKnob1(direction)
+    function move(direction) {
+        const previous = step;
+        step += direction > 0 ? 1 : -1;
+        if (step < 0) step = 17;
+        if (step > 17) step = 0;
+        if (step !== previous) {
+            Pip.playSound("SCROLL");
+            drawPage()
+        }
     }
 
-    // --- Final cleanup ---
+    function onKnob1(direction) {
+        if (removed) return;
+        if (direction) {
+            move(direction);
+            return
+        }
+        Pip.playSound("SELECT");
+        if (step === 17) {
+            exitDemo();
+            return
+        }
+        step++;
+        drawPage()
+    }
+
+    function onKnob2(direction) {
+        if (!removed && direction) move(direction)
+    }
+
     function removeDemo() {
         if (removed) return;
         removed = 1;
-        if (bootTimer) {
-            clearTimeout(bootTimer);
-            bootTimer = 0
-        }
-        clearDrawTimers();
-        renderBusy = 0;
-        detach();
-        if (renderer) renderer[6]();
-        renderer = 0;
-        playerHand = [];
-        playerCaravans = [[], [], []];
-        cpuCaravans = [[], [], []]
+        detach()
     }
-    bootTimer = setTimeout(function () {
-        bootTimer = 0;
-        if (removed) return;
-        try {
-            E.defrag()
-        } catch (error) {
-        }
-        loadRenderer();
-        if (removed) return;
-        renderBusy = 0;
-        scheduleDrawStep(1)
-    }, 10);
+
+    drawPage();
+    attach();
     return {
         id: "CARAVANDEMO",
         remove: removeDemo
